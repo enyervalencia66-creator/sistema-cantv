@@ -5,6 +5,7 @@ const { createClient } = require('@supabase/supabase-js');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const PDFDocument = require('pdfkit');
+const nodemailer = require('nodemailer');
 
 const app = express();
 app.use(cors());
@@ -16,8 +17,8 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // Using Service Role Key bypasses RLS and allows backend full control.
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Envío de correo real vía Resend (https://resend.com). El token nunca se devuelve al
-// navegador: se genera y se envía por email desde el backend únicamente.
+// Envío de correo real vía Gmail (Nodemailer + contraseña de aplicación). El token nunca
+// se devuelve al navegador: se genera y se envía por email desde el backend únicamente.
 function buildResetEmailHtml(token) {
     // Estilos inline porque los clientes de correo (Outlook, Gmail, etc.) ignoran <style>
     // externos o etiquetas <style> en muchos casos; se evita flexbox/grid por compatibilidad.
@@ -47,24 +48,21 @@ function buildResetEmailHtml(token) {
 }
 
 async function sendResetEmail(toEmail, token) {
-    const apiKey = process.env.RESEND_API_KEY;
-    const fromEmail = process.env.RESEND_FROM_EMAIL;
-    if (!apiKey || !fromEmail) throw new Error('RESEND_API_KEY o RESEND_FROM_EMAIL no configurados en el servidor.');
+    const gmailUser = process.env.GMAIL_USER;
+    const gmailPass = process.env.GMAIL_APP_PASSWORD;
+    if (!gmailUser || !gmailPass) throw new Error('GMAIL_USER o GMAIL_APP_PASSWORD no configurados en el servidor.');
 
-    const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            from: fromEmail,
-            to: [toEmail],
-            subject: 'Código de recuperación de contraseña - Sistema CANTV',
-            html: buildResetEmailHtml(token)
-        })
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: gmailUser, pass: gmailPass }
     });
-    if (!res.ok) {
-        const body = await res.text().catch(() => '');
-        throw new Error(`Resend respondió ${res.status}: ${body}`);
-    }
+
+    await transporter.sendMail({
+        from: `"Sistema CANTV" <${gmailUser}>`,
+        to: toEmail,
+        subject: 'Código de recuperación de contraseña - Sistema CANTV',
+        html: buildResetEmailHtml(token)
+    });
 }
 
 // JWT Middleware (Optional for basic thesis demo, but added for structure)
