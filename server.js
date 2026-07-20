@@ -16,6 +16,29 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // Using Service Role Key bypasses RLS and allows backend full control.
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Envío de correo real vía Resend (https://resend.com). El token nunca se devuelve al
+// navegador: se genera y se envía por email desde el backend únicamente.
+async function sendResetEmail(toEmail, token) {
+    const apiKey = process.env.RESEND_API_KEY;
+    const fromEmail = process.env.RESEND_FROM_EMAIL;
+    if (!apiKey || !fromEmail) throw new Error('RESEND_API_KEY o RESEND_FROM_EMAIL no configurados en el servidor.');
+
+    const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            from: fromEmail,
+            to: [toEmail],
+            subject: 'Código de recuperación de contraseña - Sistema CANTV',
+            html: `<p>Tu código de seguridad para restablecer la contraseña es:</p><h2 style="letter-spacing:4px;">${token}</h2><p>Este código expira pronto. Si no solicitaste este cambio, ignora este correo.</p>`
+        })
+    });
+    if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw new Error(`Resend respondió ${res.status}: ${body}`);
+    }
+}
+
 // JWT Middleware (Optional for basic thesis demo, but added for structure)
 const authenticate = (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -195,16 +218,25 @@ app.post('/api/auth/reset', async (req, res) => {
     const { username } = req.body;
     const { data: users, error } = await supabase.from('users').select('*').eq('username', username);
     if (error || users.length === 0) return res.status(404).json({ error: 'User not found' });
-    
+
     const user = users[0];
+    if (!user.email) return res.status(400).json({ error: 'Este usuario no tiene correo registrado.' });
     const token = Math.floor(100000 + Math.random() * 900000).toString();
-    
+
     const { error: insertErr } = await supabase.from('password_reset_tokens').upsert({
         email: user.email, token: token, created_at: new Date().toISOString()
     });
     if (insertErr) return res.status(500).json({ error: 'Error saving token' });
-    
-    res.json({ email: user.email, token: token });
+
+    try {
+        await sendResetEmail(user.email, token);
+    } catch (emailErr) {
+        console.error('sendResetEmail error:', emailErr);
+        return res.status(502).json({ error: 'No se pudo enviar el correo. Intenta de nuevo en unos minutos.' });
+    }
+
+    // El token NO se devuelve al cliente: solo llega por correo.
+    res.json({ email: user.email });
 });
 
 // 4. Password Reset Confirm

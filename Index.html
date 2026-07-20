@@ -6,7 +6,6 @@
     <title>CANTV - Sistema Relacional de Investigaciones</title>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <style>
 :root {
     --font-sans: 'IBM Plex Sans', 'Segoe UI', sans-serif;
@@ -1771,15 +1770,13 @@ async function sendResetEmail(e) {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username })
         });
-        if (!res.ok) throw new Error('Usuario no encontrado o error del servidor');
+        if (!res.ok) {
+            const errBody = await res.json().catch(() => ({}));
+            throw new Error(errBody.error || 'Usuario no encontrado o error del servidor');
+        }
         const data = await res.json();
 
-        // Send Email via EmailJS
-        emailjs.init("Vf4fXqF-mZt12y7B5");
-        console.log(`[SIMULACIÓN EMAIL] Enviado a ${data.email}. Token: ${data.token}`);
-        alert(`¡SIMULACIÓN!\nSe enviaría un correo a: ${data.email}\n\nTu token de seguridad es: ${data.token}\n(Cópialo para el siguiente paso)`);
-
-        document.getElementById('resetSuccessText').innerText = `Token enviado exitosamente a ${data.email}`;
+        document.getElementById('resetSuccessText').innerText = `Revisa la bandeja de entrada de ${data.email}: te enviamos un código de seguridad.`;
         succ.classList.remove('hidden');
 
         setTimeout(() => {
