@@ -18,6 +18,34 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Envío de correo real vía Resend (https://resend.com). El token nunca se devuelve al
 // navegador: se genera y se envía por email desde el backend únicamente.
+function buildResetEmailHtml(token) {
+    // Estilos inline porque los clientes de correo (Outlook, Gmail, etc.) ignoran <style>
+    // externos o etiquetas <style> en muchos casos; se evita flexbox/grid por compatibilidad.
+    return `
+<div style="background:#f1f5f9;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;">
+  <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.08);">
+    <div style="background:#1e293b;padding:24px 32px;text-align:center;">
+      <span style="color:#ffffff;font-size:24px;font-weight:800;letter-spacing:-1px;font-style:italic;">cantv</span>
+    </div>
+    <div style="padding:32px;">
+      <h1 style="margin:0 0 12px;font-size:18px;color:#1e293b;">Código de recuperación de contraseña</h1>
+      <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.5;">
+        Recibimos una solicitud para restablecer tu contraseña en el <strong>Sistema Relacional de Investigaciones</strong>. Usa el siguiente código para continuar:
+      </p>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:18px;text-align:center;margin-bottom:20px;">
+        <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#2563eb;">${token}</span>
+      </div>
+      <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
+        Este código expira pronto. Si tú no solicitaste este cambio, puedes ignorar este correo con seguridad — tu contraseña actual seguirá siendo válida.
+      </p>
+    </div>
+    <div style="background:#f8fafc;padding:16px 32px;text-align:center;border-top:1px solid #e2e8f0;">
+      <span style="font-size:11px;color:#94a3b8;">© ${new Date().getFullYear()} CANTV — Sistema Relacional de Investigaciones</span>
+    </div>
+  </div>
+</div>`;
+}
+
 async function sendResetEmail(toEmail, token) {
     const apiKey = process.env.RESEND_API_KEY;
     const fromEmail = process.env.RESEND_FROM_EMAIL;
@@ -30,7 +58,7 @@ async function sendResetEmail(toEmail, token) {
             from: fromEmail,
             to: [toEmail],
             subject: 'Código de recuperación de contraseña - Sistema CANTV',
-            html: `<p>Tu código de seguridad para restablecer la contraseña es:</p><h2 style="letter-spacing:4px;">${token}</h2><p>Este código expira pronto. Si no solicitaste este cambio, ignora este correo.</p>`
+            html: buildResetEmailHtml(token)
         })
     });
     if (!res.ok) {
