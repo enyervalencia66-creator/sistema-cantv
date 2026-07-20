@@ -1,0 +1,190 @@
+{
+  "users": [
+    "id",
+    "username",
+    "email",
+    "telefono",
+    "email_verified_at",
+    "password",
+    "remember_token",
+    "created_at",
+    "updated_at",
+    "role",
+    "estado",
+    "regions",
+    "nombre"
+  ],
+  "roles": [
+    "id_rol",
+    "name",
+    "guard_name",
+    "created_at",
+    "updated_at"
+  ],
+  "permissions": [
+    "id",
+    "name",
+    "guard_name",
+    "created_at",
+    "updated_at"
+  ],
+  "role_has_permissions": [
+    "role_id",
+    "permissions_id"
+  ],
+  "model_has_permissions": [
+    "permissions_id",
+    "model_id",
+    "model_type"
+  ],
+  "password_reset_tokens": [
+    "email",
+    "token",
+    "created_at"
+  ],
+  "units": [
+    "id",
+    "description",
+    "created_at",
+    "updated_at"
+  ],
+  "general_managements": [
+    "id_gerencia_gral",
+    "unit_id",
+    "description",
+    "created_at",
+    "updated_at"
+  ],
+  "line_managements": [
+    "id_gerencia_linea",
+    "general_managements_id",
+    "description",
+    "created_at",
+    "updated_at"
+  ],
+  "positions": [
+    "id_posicion",
+    "description",
+    "created_at",
+    "updated_at"
+  ],
+  "regions": [
+    "id_region",
+    "description",
+    "created_at",
+    "updated_at"
+  ],
+  "personas": [
+    "id_persona",
+    "cedulas",
+    "nacionalidad",
+    "nombres",
+    "apellidos",
+    "tipos",
+    "estatus",
+    "coordenadas",
+    "position_id",
+    "region_id",
+    "unit_id",
+    "general_management_id",
+    "line_management_id",
+    "created_at",
+    "update_at",
+    "p00"
+  ],
+  "documents": [
+    "id_documento",
+    "persona_id",
+    "ruta",
+    "tipo_documento",
+    "nombre_original",
+    "hash_name",
+    "created_at",
+    "updated_at"
+  ],
+  "estudios": [
+    "id_estudio",
+    "persona_id",
+    "titulo",
+    "institucion",
+    "estado_estudio",
+    "soporte_path",
+    "created_at",
+    "updated_at"
+  ],
+  "referencias_laborales": [
+    "id_referencia",
+    "persona_id",
+    "referencia_contacto",
+    "telefono_contacto",
+    "fecha_inicio",
+    "fecha_fin",
+    "salario",
+    "motivo_egreso",
+    "soporte_path",
+    "created_at",
+    "updated_at"
+  ],
+  "solicitudes_especialistas": [
+    "id_solicitud",
+    "solicitante_id",
+    "tipo_solicitud",
+    "estatus",
+    "detalle",
+    "criticidad",
+    "documento_1",
+    "documento_2",
+    "created_at",
+    "updated_at"
+  ],
+  "investigaciones": [
+    "id_investigacion",
+    "numero_ticket",
+    "denunciante_id",
+    "descripcion_hechos",
+    "fecha_incidente",
+    "estatus",
+    "conclusion",
+    "soporte_path",
+    "coordinador_asignado",
+    "supervisor_asignado",
+    "especialista_asignado",
+    "plan_trabajo",
+    "fecha_limite",
+    "sustanciacion_detalle",
+    "sustanciacion_doc1",
+    "sustanciacion_doc2",
+    "created_at",
+    "updated_at"
+  ],
+  "investigacion_persona": [
+    "investigacion_id",
+    "persona_id",
+    "grado_implicacion",
+    "created_at",
+    "updated_at"
+  ],
+  "casos_estado_historial": [
+    "id_movimiento",
+    "investigacion_id",
+    "estado_anterior",
+    "estado_nuevo",
+    "fecha_cambio",
+    "usuario_id"
+  ],
+  "casos_comentarios": [
+    "id_comentario",
+    "investigacion_id",
+    "autor_id",
+    "texto",
+    "fecha"
+  ],
+  "notificaciones": [
+    "id_notificacion",
+    "user_id",
+    "mensaje",
+    "link",
+    "leido",
+    "fecha"
+  ]
+}
