@@ -193,8 +193,11 @@ body { font-family: var(--font-sans); background: var(--bg-main); background-att
 .file-upload-name { font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
 .file-upload-zone.has-file .file-upload-name { color: var(--cantv-fuchsia); font-weight: 600; }
 
-.file-actions { display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.file-action-btn { display: inline-flex; align-items: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.5rem 1rem; font-size: 0.8rem; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); white-space: nowrap; line-height: 1; }
+.file-badge-row { display: flex; align-items: center; gap: 0.65rem; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 10px; padding: 0.5rem 0.6rem 0.5rem 0.9rem; font-size: 0.82rem; margin-bottom: 0.5rem; width: 100%; max-width: 480px; }
+.file-badge-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
+.file-actions { display: inline-flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
+.file-action-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; border: none; border-radius: var(--radius-sm); padding: 0.5rem 1rem; font-size: 0.8rem; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); white-space: nowrap; line-height: 1; }
+.file-action-btn.icon-only { padding: 0.5rem; width: 32px; height: 32px; flex-shrink: 0; }
 .file-action-btn svg { flex-shrink: 0; }
 .file-action-view { background: #f1f5f9; color: var(--text-primary); border: 1px solid var(--glass-border); }
 .file-action-view:hover { background: #e2e8f0; }
@@ -2490,13 +2493,12 @@ function renderFileChip(fileObj, label, uploaderUsername) {
     const encoded = !isStr ? encodeURIComponent(JSON.stringify(fileObj)) : '';
     // Solo quien subió el archivo puede descargarlo; el resto solo puede verlo.
     const puedeDescargar = !!uploaderUsername && !!currentUser && currentUser.username === uploaderUsername;
-    return `<div style="display:flex;align-items:center;gap:0.5rem;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;padding:0.5rem 0.85rem;font-size:0.8rem">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-        <span style="color:var(--text-secondary)">${label || ''}</span>
-        <strong>${name}</strong>
+    return `<div class="file-badge-row">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+        <span class="file-badge-name" title="${name}">${label ? `<span style="color:var(--text-secondary)">${label}</span> ` : ''}<strong>${name}</strong></span>
         <span class="file-actions">
-        ${isPreviewable ? `<button class="file-action-btn file-action-view" onclick="previewFile(JSON.parse(decodeURIComponent('${encoded}')))">${ICON_EYE_SM} Vista previa</button>` : ''}
-        ${!isStr ? (puedeDescargar ? `<button class="file-action-btn file-action-download" onclick="downloadFile(JSON.parse(decodeURIComponent('${encoded}')))">${ICON_DOWNLOAD} Descargar</button>` : '') : `<span style="font-size:0.65rem;color:var(--text-muted)">(Antiguo)</span>`}
+        ${isPreviewable ? `<button class="file-action-btn file-action-view icon-only" title="Vista previa" onclick="previewFile(JSON.parse(decodeURIComponent('${encoded}')))">${ICON_EYE_SM}</button>` : ''}
+        ${!isStr ? (puedeDescargar ? `<button class="file-action-btn file-action-download icon-only" title="Descargar" onclick="downloadFile(JSON.parse(decodeURIComponent('${encoded}')))">${ICON_DOWNLOAD}</button>` : '') : `<span style="font-size:0.65rem;color:var(--text-muted);white-space:nowrap">(Antiguo)</span>`}
         </span>
     </div>`;
 }
@@ -2517,20 +2519,20 @@ function renderFileBadge(fileObj, uploaderUsername) {
 
     let buttons = '';
     if (isUrl) {
-        buttons = `<button class="file-action-btn file-action-view" onclick="openStoredFileUrl(decodeURIComponent('${encodedUrl}'))">${ICON_EYE_SM} Ver Documento</button>
-        ${puedeDescargar ? `<button class="file-action-btn file-action-download" onclick="downloadFile({name: decodeURIComponent('${encodedName}'), data: decodeURIComponent('${encodedUrl}')})">${ICON_DOWNLOAD} Descargar</button>` : ''}`;
+        buttons = `<button class="file-action-btn file-action-view icon-only" title="Ver Documento" onclick="openStoredFileUrl(decodeURIComponent('${encodedUrl}'))">${ICON_EYE_SM}</button>
+        ${puedeDescargar ? `<button class="file-action-btn file-action-download icon-only" title="Descargar" onclick="downloadFile({name: decodeURIComponent('${encodedName}'), data: decodeURIComponent('${encodedUrl}')})">${ICON_DOWNLOAD}</button>` : ''}`;
     } else if (!isStr) {
         buttons = `
-        <button class="file-action-btn file-action-view" onclick="previewFile(JSON.parse(decodeURIComponent('${encoded}')))">${ICON_EYE_SM} Ver</button>
-        ${puedeDescargar ? `<button class="file-action-btn file-action-download" onclick="downloadFile(JSON.parse(decodeURIComponent('${encoded}')))">${ICON_DOWNLOAD} Descargar</button>` : ''}
+        <button class="file-action-btn file-action-view icon-only" title="Ver" onclick="previewFile(JSON.parse(decodeURIComponent('${encoded}')))">${ICON_EYE_SM}</button>
+        ${puedeDescargar ? `<button class="file-action-btn file-action-download icon-only" title="Descargar" onclick="downloadFile(JSON.parse(decodeURIComponent('${encoded}')))">${ICON_DOWNLOAD}</button>` : ''}
         `;
     } else {
-        buttons = `<span style="font-size:0.65rem;color:var(--text-muted)">(Antiguo)</span>`;
+        buttons = `<span style="font-size:0.65rem;color:var(--text-muted);white-space:nowrap">(Antiguo)</span>`;
     }
 
-    return `<div style="display:inline-flex;align-items:center;gap:0.65rem;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:10px;padding:0.55rem 0.9rem;font-size:0.82rem;margin-right:0.5rem;margin-bottom:0.5rem;flex-wrap:wrap">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-        <span style="color:var(--text-primary)" title="${isUrl ? fileObj : ''}">${name}</span>
+    return `<div class="file-badge-row">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+        <span class="file-badge-name" title="${isUrl ? fileObj : name}">${name}</span>
         <span class="file-actions">${buttons}</span>
     </div>`;
 }
