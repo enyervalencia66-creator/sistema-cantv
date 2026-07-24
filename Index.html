@@ -406,6 +406,10 @@ select.input-field option { background: #ffffff; color: var(--text-primary); }
 .badge-med { background: #fffbeb; color: #d97706; border-color: #fde68a; }
 .badge-high { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
 .badge-neutral { background: #f3f4f6; color: #4b5563; border-color: #e5e7eb; }
+/* Criticidad de incidencias: Baja = azul, Media = amarillo, Alta = rojo */
+.badge-crit-baja { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+.badge-crit-media { background: #fffbeb; color: #d97706; border-color: #fde68a; }
+.badge-crit-alta { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
 
 /* Modals */
 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10,15,30,0.5); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000; animation: fadeIn 0.25s ease; padding: 1.25rem; box-sizing: border-box; }
@@ -1215,6 +1219,15 @@ function saveDB() {
     // Deprecated. We will push to Supabase individually in action functions.
 }
 function generateId(prefix, arr) { return `${prefix}-${new Date().getFullYear()}-${String(arr.length + 1).padStart(3, '0')}`; }
+
+// Clase de badge según la criticidad de la incidencia: Baja = azul, Media = amarillo, Alta = rojo.
+function criticidadBadgeClass(criticidad) {
+    const c = (criticidad || '').toLowerCase();
+    if (c === 'baja') return 'badge-crit-baja';
+    if (c === 'media') return 'badge-crit-media';
+    if (c === 'alta') return 'badge-crit-alta';
+    return 'badge-neutral';
+}
 
 async function notifyUser(target, message, linkObj = null) {
     if (target === 'admin') target = ROLES.SUPER;
@@ -2686,7 +2699,7 @@ function renderSolicitudDetail(id) {
                 </div>
                 <div>
                     <p style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em">Criticidad</p>
-                    <span class="badge badge-high" style="margin-top:0.3rem;display:inline-block">${s.criticidad}</span>
+                    <span class="badge ${criticidadBadgeClass(s.criticidad)}" style="margin-top:0.3rem;display:inline-block">${s.criticidad}</span>
                 </div>
                 <div>
                     <p style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em">Enviado por</p>
