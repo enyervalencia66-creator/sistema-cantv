@@ -205,7 +205,21 @@ app.post('/api/upload', async (req, res) => {
 
 app.post('/api/db/:table', async (req, res) => {
     try {
-        const { data, error } = await supabase.from(req.params.table).insert(req.body).select();
+        let { data, error } = await supabase.from(req.params.table).insert(req.body).select();
+
+        // Algunas tablas (p.ej. 'personas') tienen su secuencia de ID desincronizada con los datos
+        // reales — probablemente por filas cargadas con un ID explícito sin avanzar la secuencia.
+        // Si el insert choca por eso, se reintenta una única vez calculando el próximo ID libre.
+        if (error && error.code === '23505') {
+            const match = /Key \(([^)]+)\)=/.exec(error.details || '');
+            const pkColumn = match && match[1];
+            if (pkColumn && !(pkColumn in req.body)) {
+                const { data: maxRow } = await supabase.from(req.params.table).select(pkColumn).order(pkColumn, { ascending: false }).limit(1);
+                const nextId = ((maxRow && maxRow[0] && maxRow[0][pkColumn]) || 0) + 1;
+                ({ data, error } = await supabase.from(req.params.table).insert({ ...req.body, [pkColumn]: nextId }).select());
+            }
+        }
+
         if (error) throw error;
         await prefetchData();
         res.json({ success: true, data });
@@ -222,6 +236,27 @@ app.put('/api/db/:table/:idColumn/:idValue', async (req, res) => {
         await prefetchData();
         res.json({ success: true, data });
     } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Borrado genérico filtrando por query params estilo PostgREST (col=eq.valor), que es el formato
+// que ya usa el frontend (p.ej. para desvincular una persona de un caso). Antes no existía ninguna
+// ruta DELETE, así que estas peticiones fallaban con 404 en silencio (el frontend no revisaba
+// res.ok) y el registro nunca se borraba realmente de la base de datos.
+app.delete('/api/db/:table', async (req, res) => {
+    try {
+        let query = supabase.from(req.params.table).delete();
+        for (const [key, rawValue] of Object.entries(req.query)) {
+            const value = typeof rawValue === 'string' && rawValue.startsWith('eq.') ? rawValue.slice(3) : rawValue;
+            query = query.eq(key, value);
+        }
+        const { error } = await query;
+        if (error) throw error;
+        await prefetchData();
+        res.json({ success: true });
+    } catch (e) {
+        console.error(`DELETE /api/db/${req.params.table} ERROR:`, e);
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // --- AUTH ENDPOINTS ---

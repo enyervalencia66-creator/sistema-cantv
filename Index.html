@@ -4277,6 +4277,7 @@ async function adminModalCrearUsuario() {
             <input type="text" id="nuUser" class="input-field" placeholder="Username (ej. jdoe o Juan Perez)" autocomplete="off" maxlength="30">
             <input type="text" id="nuName" class="input-field" placeholder="Nombre completo" autocomplete="off" maxlength="50">
             <input type="email" id="nuEmail" class="input-field" placeholder="Correo electrónico" maxlength="100">
+            <input type="tel" id="nuTelefono" class="input-field" placeholder="Teléfono (ej. 0412-1234567)" autocomplete="off" maxlength="20">
             <input type="password" id="nuPass" class="input-field" placeholder="Contraseña inicial" autocomplete="new-password" maxlength="64">
             <select id="nuRole" class="input-field">
                 <option value="">Seleccione un Rol...</option>
@@ -4308,6 +4309,7 @@ async function adminCrearUsuario(e) {
     const userEl = document.getElementById('nuUser');
     const nameEl = document.getElementById('nuName');
     const emailEl = document.getElementById('nuEmail');
+    const telefonoEl = document.getElementById('nuTelefono');
     const passEl = document.getElementById('nuPass');
     const roleEl = document.getElementById('nuRole');
     const regionEl = document.getElementById('nuRegion');
@@ -4315,11 +4317,12 @@ async function adminCrearUsuario(e) {
     const username = userEl.value.trim();
     const nombre = nameEl.value.trim();
     const email = emailEl.value.trim();
+    const telefono = telefonoEl.value.trim();
     const pass = passEl.value;
     const roleId = roleEl.value;
     const regionId = regionEl.value;
 
-    [userEl, nameEl, emailEl, passEl, roleEl, regionEl].forEach(el => el.style.borderColor = '');
+    [userEl, nameEl, emailEl, telefonoEl, passEl, roleEl, regionEl].forEach(el => el.style.borderColor = '');
 
     // Username: letras (con tildes/ñ), números, espacios y guiones bajos
     if (username.length < 4 || username.length > 30) {
@@ -4351,6 +4354,11 @@ async function adminCrearUsuario(e) {
         return marcarCampoInvalido(emailEl, 'Ya existe un usuario registrado con ese correo.');
     }
 
+    // Teléfono: opcional, pero si se ingresa debe tener un formato de teléfono válido
+    if (telefono && !/^[\d+\-\s]{7,20}$/.test(telefono)) {
+        return marcarCampoInvalido(telefonoEl, 'Ingrese un teléfono válido (solo números, espacios y guiones).');
+    }
+
     // Contraseña: longitud mínima y al menos una letra y un número
     if (pass.length < 8 || pass.length > 64) {
         return marcarCampoInvalido(passEl, 'La contraseña debe tener entre 8 y 64 caracteres.');
@@ -4376,9 +4384,11 @@ async function adminCrearUsuario(e) {
             username,
             nombre: nombre || username,
             email,
+            telefono: telefono || null,
             password: pass,
             role: roleId,
-            regions: regionId
+            regions: regionId,
+            estado: 'activo'
         };
 
         const res = await fetch('/api/db/users', {
