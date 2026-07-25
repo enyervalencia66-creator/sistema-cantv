@@ -4269,7 +4269,7 @@ function renderAdminUsers() {
 }
 
 async function adminModalCrearUsuario() {
-    const rolesOpts = db.roles.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+    const rolesOpts = db.roles.map(r => `<option value="${r.id_rol}">${r.name}</option>`).join('');
     const form = `
         <h3 class="font-bold text-xl mb-4" style="color: var(--cantv-blue-light);">Añadir Nuevo Usuario</h3>
         <form onsubmit="adminCrearUsuario(event)" class="flex flex-col gap-4" novalidate>
