@@ -4036,11 +4036,11 @@ function renderExpedienteDetail(cedula) {
 }
 
 function renderCreatePersona() {
-    const posOpts = (db.positions||[]).map(p => `<option value="${p.id}">${p.description}</option>`).join('');
-    const regOpts = (db.regions||[]).map(r => `<option value="${r.id}">${r.description}</option>`).join('');
+    const posOpts = (db.positions||[]).map(p => `<option value="${p.id_posicion}">${p.description}</option>`).join('');
+    const regOpts = (db.regions||[]).map(r => `<option value="${r.id_region}">${r.description}</option>`).join('');
     const uniOpts = (db.units||[]).map(u => `<option value="${u.id}">${u.description}</option>`).join('');
-    const genOpts = (db.general_managements||[]).map(g => `<option value="${g.id}">${g.description}</option>`).join('');
-    const linOpts = (db.line_managements||[]).map(l => `<option value="${l.id}">${l.description}</option>`).join('');
+    const genOpts = (db.general_managements||[]).map(g => `<option value="${g.id_gerencia_gral}">${g.description}</option>`).join('');
+    const linOpts = (db.line_managements||[]).map(l => `<option value="${l.id_gerencia_linea}">${l.description}</option>`).join('');
 
     return `<div class="view-enter max-w-4xl mx-auto">
         <div class="case-header">
@@ -4270,6 +4270,7 @@ function renderAdminUsers() {
 
 async function adminModalCrearUsuario() {
     const rolesOpts = db.roles.map(r => `<option value="${r.id_rol}">${r.name}</option>`).join('');
+    const regionesOpts = (db.regions || []).map(r => `<option value="${r.id_region}">${r.description}</option>`).join('');
     const form = `
         <h3 class="font-bold text-xl mb-4" style="color: var(--cantv-blue-light);">Añadir Nuevo Usuario</h3>
         <form onsubmit="adminCrearUsuario(event)" class="flex flex-col gap-4" novalidate>
@@ -4280,6 +4281,10 @@ async function adminModalCrearUsuario() {
             <select id="nuRole" class="input-field">
                 <option value="">Seleccione un Rol...</option>
                 ${rolesOpts}
+            </select>
+            <select id="nuRegion" class="input-field">
+                <option value="">Seleccione una Región...</option>
+                ${regionesOpts}
             </select>
             <div class="flex gap-2 mt-4">
                 <button type="submit" class="btn btn-primary flex-1">Crear Usuario</button>
@@ -4305,14 +4310,16 @@ async function adminCrearUsuario(e) {
     const emailEl = document.getElementById('nuEmail');
     const passEl = document.getElementById('nuPass');
     const roleEl = document.getElementById('nuRole');
+    const regionEl = document.getElementById('nuRegion');
 
     const username = userEl.value.trim();
     const nombre = nameEl.value.trim();
     const email = emailEl.value.trim();
     const pass = passEl.value;
     const roleId = roleEl.value;
+    const regionId = regionEl.value;
 
-    [userEl, nameEl, emailEl, passEl, roleEl].forEach(el => el.style.borderColor = '');
+    [userEl, nameEl, emailEl, passEl, roleEl, regionEl].forEach(el => el.style.borderColor = '');
 
     // Username: letras (con tildes/ñ), números, espacios y guiones bajos
     if (username.length < 4 || username.length > 30) {
@@ -4357,6 +4364,12 @@ async function adminCrearUsuario(e) {
         return marcarCampoInvalido(roleEl, 'Debe seleccionar un rol.');
     }
 
+    // Región: determina qué incidencias/casos ve este usuario y con quién se le vincula
+    // automáticamente (coordinador, supervisor, especialistas de su misma región).
+    if (!regionId) {
+        return marcarCampoInvalido(regionEl, 'Debe seleccionar una región.');
+    }
+
     if (!lockAction(btn, 'Creando...')) return;
     try {
         const payload = {
@@ -4364,7 +4377,8 @@ async function adminCrearUsuario(e) {
             nombre: nombre || username,
             email,
             password: pass,
-            role: roleId
+            role: roleId,
+            regions: regionId
         };
 
         const res = await fetch('/api/db/users', {
@@ -4377,6 +4391,7 @@ async function adminCrearUsuario(e) {
             const roleObj = db.roles.find(r => r.id_rol == u.role);
             const permIds = roleObj ? db.role_has_permissions.filter(rhp => rhp.role_id === roleObj.id_rol).map(rhp => rhp.permissions_id) : [];
             const userPerms = roleObj ? db.permissions.filter(p => permIds.includes(p.id)).map(p => p.name) : [];
+            const regionObj = db.regions.find(r => r.id_region == u.regions);
 
             db.users.push({
                 id: u.id || u.username,
@@ -4388,7 +4403,7 @@ async function adminCrearUsuario(e) {
                 role_id: roleObj ? roleObj.id_rol : null,
                 permissions: userPerms,
                 name: u.nombre || u.username,
-                region: 'Nacional',
+                region: regionObj ? regionObj.description : 'Nacional',
                 estado: u.estado || 'activo'
             });
 
@@ -4412,6 +4427,8 @@ async function adminCrearUsuario(e) {
 async function adminModalEditarUsuario(userId) {
     const u = db.users.find(x => x.id == userId);
     const rolesOpts = db.roles.map(r => `<option value="${r.id_rol}" ${r.id_rol == u.role_id ? 'selected' : ''}>${r.name}</option>`).join('');
+    const regionActual = db.regions.find(r => r.description === u.region);
+    const regionesOpts = (db.regions || []).map(r => `<option value="${r.id_region}" ${regionActual && r.id_region == regionActual.id_region ? 'selected' : ''}>${r.description}</option>`).join('');
     const form = `
         <h3 class="font-bold text-xl mb-4" style="color: var(--cantv-blue-light);">Editar Usuario</h3>
         <div class="flex flex-col gap-4">
@@ -4420,6 +4437,10 @@ async function adminModalEditarUsuario(userId) {
             <div><label class="text-xs text-secondary">Correo electrónico</label><input type="email" id="editEmail" class="input-field" value="${u.email || ''}" required maxlength="100"></div>
             <div><label class="text-xs text-secondary">Rol</label><select id="editRole" class="input-field" required>
                 ${rolesOpts}
+            </select></div>
+            <div><label class="text-xs text-secondary">Región</label><select id="editRegion" class="input-field" required>
+                <option value="">Seleccione una Región...</option>
+                ${regionesOpts}
             </select></div>
             <div class="flex gap-2 mt-4">
                 <button class="btn btn-primary flex-1" onclick="adminEjecutarEditarUsuario('${userId}')">Guardar Cambios</button>
@@ -4436,8 +4457,10 @@ async function adminEjecutarEditarUsuario(userId) {
     const nombre = document.getElementById('editName').value.trim();
     const email = document.getElementById('editEmail').value.trim();
     const roleId = document.getElementById('editRole').value;
+    const regionId = document.getElementById('editRegion').value;
 
     if(!username) return showToast('El username es obligatorio', 'warning');
+    if(!regionId) return showToast('Debe seleccionar una región', 'warning');
 
     if (!lockAction(btn, 'Guardando...')) return;
     try {
@@ -4445,7 +4468,8 @@ async function adminEjecutarEditarUsuario(userId) {
             username: username,
             nombre: nombre || username,
             email: email,
-            role: roleId
+            role: roleId,
+            regions: regionId
         };
 
         const res = await fetch(`/api/db/users/id/${userId}`, {
@@ -4457,12 +4481,14 @@ async function adminEjecutarEditarUsuario(userId) {
             const roleObj = db.roles.find(r => r.id_rol == roleId);
             const permIds = roleObj ? db.role_has_permissions.filter(rhp => rhp.role_id === roleObj.id_rol).map(rhp => rhp.permissions_id) : [];
             const userPerms = roleObj ? db.permissions.filter(p => permIds.includes(p.id)).map(p => p.name) : [];
+            const regionObj = db.regions.find(r => r.id_region == regionId);
             Object.assign(u, {
                 username, email,
                 name: nombre || username,
                 role: roleObj ? roleObj.name : u.role,
                 role_id: roleObj ? roleObj.id_rol : u.role_id,
-                permissions: userPerms
+                permissions: userPerms,
+                region: regionObj ? regionObj.description : u.region
             });
 
             closeModalUI(true);
