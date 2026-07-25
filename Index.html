@@ -4314,11 +4314,11 @@ async function adminCrearUsuario(e) {
 
     [userEl, nameEl, emailEl, passEl, roleEl].forEach(el => el.style.borderColor = '');
 
-    // Username: letras, números, espacios y guiones bajos (los espacios sí están permitidos)
+    // Username: letras (con tildes/ñ), números, espacios y guiones bajos
     if (username.length < 4 || username.length > 30) {
         return marcarCampoInvalido(userEl, 'El username debe tener entre 4 y 30 caracteres.');
     }
-    if (!/^[a-zA-Z0-9_ ]+$/.test(username)) {
+    if (!/^[a-zA-Z0-9_ÁÉÍÓÚáéíóúÑñÜü ]+$/.test(username)) {
         return marcarCampoInvalido(userEl, 'El username solo puede contener letras, números, espacios y guiones bajos.');
     }
     if (db.users.some(u => (u.username || '').trim().toLowerCase() === username.toLowerCase())) {
