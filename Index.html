@@ -4272,12 +4272,12 @@ async function adminModalCrearUsuario() {
     const rolesOpts = db.roles.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
     const form = `
         <h3 class="font-bold text-xl mb-4" style="color: var(--cantv-blue-light);">Añadir Nuevo Usuario</h3>
-        <form onsubmit="adminCrearUsuario(event)" class="flex flex-col gap-4">
-            <input type="text" id="nuUser" class="input-field" placeholder="Username (ej. jdoe)" autocomplete="off" required minlength="4" maxlength="30" pattern="^[a-zA-Z0-9_]+$" title="Solo letras, números y guiones bajos">
-            <input type="text" id="nuName" class="input-field" placeholder="Nombre completo" autocomplete="off" required minlength="4" maxlength="50" pattern="^[a-zA-ZÁÉÍÓÚáéíóúÑñ\s]+$" title="Ingrese solo letras">
-            <input type="email" id="nuEmail" class="input-field" placeholder="Correo electrónico" required maxlength="100">
-            <input type="password" id="nuPass" class="input-field" placeholder="Contraseña inicial" autocomplete="new-password" required minlength="8" maxlength="64">
-            <select id="nuRole" class="input-field" required>
+        <form onsubmit="adminCrearUsuario(event)" class="flex flex-col gap-4" novalidate>
+            <input type="text" id="nuUser" class="input-field" placeholder="Username (ej. jdoe o Juan Perez)" autocomplete="off" maxlength="30">
+            <input type="text" id="nuName" class="input-field" placeholder="Nombre completo" autocomplete="off" maxlength="50">
+            <input type="email" id="nuEmail" class="input-field" placeholder="Correo electrónico" maxlength="100">
+            <input type="password" id="nuPass" class="input-field" placeholder="Contraseña inicial" autocomplete="new-password" maxlength="64">
+            <select id="nuRole" class="input-field">
                 <option value="">Seleccione un Rol...</option>
                 ${rolesOpts}
             </select>
@@ -4290,16 +4290,72 @@ async function adminModalCrearUsuario() {
     createModalUI(form);
 }
 
+// Marca un campo del formulario como inválido: resalta el borde, enfoca y explica el motivo.
+function marcarCampoInvalido(input, mensaje) {
+    input.style.borderColor = 'var(--status-high)';
+    input.focus();
+    showToast(mensaje, 'warning');
+}
+
 async function adminCrearUsuario(e) {
     if (e) e.preventDefault();
     const btn = e && e.target ? e.target.querySelector('button[type="submit"]') : null;
-    const username = document.getElementById('nuUser').value.trim();
-    const nombre = document.getElementById('nuName').value.trim();
-    const email = document.getElementById('nuEmail').value.trim();
-    const pass = document.getElementById('nuPass').value;
-    const roleId = document.getElementById('nuRole').value;
+    const userEl = document.getElementById('nuUser');
+    const nameEl = document.getElementById('nuName');
+    const emailEl = document.getElementById('nuEmail');
+    const passEl = document.getElementById('nuPass');
+    const roleEl = document.getElementById('nuRole');
 
-    if(!username || !pass || !roleId) return showToast('Complete los campos obligatorios', 'warning');
+    const username = userEl.value.trim();
+    const nombre = nameEl.value.trim();
+    const email = emailEl.value.trim();
+    const pass = passEl.value;
+    const roleId = roleEl.value;
+
+    [userEl, nameEl, emailEl, passEl, roleEl].forEach(el => el.style.borderColor = '');
+
+    // Username: letras, números, espacios y guiones bajos (los espacios sí están permitidos)
+    if (username.length < 4 || username.length > 30) {
+        return marcarCampoInvalido(userEl, 'El username debe tener entre 4 y 30 caracteres.');
+    }
+    if (!/^[a-zA-Z0-9_ ]+$/.test(username)) {
+        return marcarCampoInvalido(userEl, 'El username solo puede contener letras, números, espacios y guiones bajos.');
+    }
+    if (db.users.some(u => (u.username || '').trim().toLowerCase() === username.toLowerCase())) {
+        return marcarCampoInvalido(userEl, 'Ya existe un usuario con ese username.');
+    }
+
+    // Nombre completo: solo letras y espacios
+    if (nombre.length < 4 || nombre.length > 50) {
+        return marcarCampoInvalido(nameEl, 'El nombre completo debe tener entre 4 y 50 caracteres.');
+    }
+    if (!/^[a-zA-ZÁÉÍÓÚáéíóúÑñ\s]+$/.test(nombre)) {
+        return marcarCampoInvalido(nameEl, 'El nombre completo solo puede contener letras y espacios.');
+    }
+
+    // Correo electrónico: formato válido y único
+    if (!email) {
+        return marcarCampoInvalido(emailEl, 'El correo electrónico es obligatorio.');
+    }
+    if (email.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return marcarCampoInvalido(emailEl, 'Ingrese un correo electrónico válido (ej. usuario@dominio.com).');
+    }
+    if (db.users.some(u => (u.email || '').trim().toLowerCase() === email.toLowerCase())) {
+        return marcarCampoInvalido(emailEl, 'Ya existe un usuario registrado con ese correo.');
+    }
+
+    // Contraseña: longitud mínima y al menos una letra y un número
+    if (pass.length < 8 || pass.length > 64) {
+        return marcarCampoInvalido(passEl, 'La contraseña debe tener entre 8 y 64 caracteres.');
+    }
+    if (!/(?=.*[A-Za-z])(?=.*\d)/.test(pass)) {
+        return marcarCampoInvalido(passEl, 'La contraseña debe incluir al menos una letra y un número.');
+    }
+
+    // Rol
+    if (!roleId) {
+        return marcarCampoInvalido(roleEl, 'Debe seleccionar un rol.');
+    }
 
     if (!lockAction(btn, 'Creando...')) return;
     try {
