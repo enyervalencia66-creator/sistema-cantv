@@ -6,6 +6,10 @@ const jwt = require('jsonwebtoken');
 const path = require('path');
 const PDFDocument = require('pdfkit');
 const nodemailer = require('nodemailer');
+const bcrypt = require('bcryptjs');
+
+const BCRYPT_ROUNDS = 10;
+const isBcryptHash = (pw) => typeof pw === 'string' && /^\$2[aby]\$\d{2}\$/.test(pw);
 
 const app = express();
 app.use(cors());
@@ -93,6 +97,29 @@ function stripPassword(rows) {
     const { password, ...rest } = rows;
     return rest;
 }
+
+// Migra en caliente cualquier contraseña que todavía esté en texto plano a un hash bcrypt.
+// Se llama una vez al arrancar el servidor; es seguro ejecutarla en cada boot porque revisa el
+// formato de cada contraseña y se salta las que ya están hasheadas (idempotente). El login (más
+// abajo) también hashea de forma perezosa en el momento si encuentra una contraseña vieja antes
+// de que esta migración llegue a ella, así que no hay ventana insegura entre despliegue y migración.
+async function hashLegacyPasswordsOnce() {
+    try {
+        const { data: users, error } = await supabase.from('users').select('id, password');
+        if (error || !users) return;
+        const pending = users.filter(u => u.password && !isBcryptHash(u.password));
+        if (pending.length === 0) return;
+        console.log(`Migrando ${pending.length} contraseña(s) en texto plano a bcrypt...`);
+        for (const u of pending) {
+            const hashed = await bcrypt.hash(u.password, BCRYPT_ROUNDS);
+            await supabase.from('users').update({ password: hashed }).eq('id', u.id);
+        }
+        console.log('Migración de contraseñas completada.');
+    } catch (e) {
+        console.error('Error migrando contraseñas existentes:', e);
+    }
+}
+hashLegacyPasswordsOnce();
 
 async function prefetchData() {
     try {
@@ -214,6 +241,11 @@ app.post('/api/upload', authenticate, async (req, res) => {
 
 app.post('/api/db/:table', authenticate, async (req, res) => {
     try {
+        // Cualquier contraseña que llegue por esta ruta genérica (p.ej. al crear un usuario nuevo)
+        // se hashea antes de tocar la base de datos: nunca se guarda en texto plano.
+        if (req.params.table === 'users' && req.body.password) {
+            req.body.password = await bcrypt.hash(req.body.password, BCRYPT_ROUNDS);
+        }
         let { data, error } = await supabase.from(req.params.table).insert(req.body).select();
 
         // Algunas tablas (p.ej. 'personas') tienen su secuencia de ID desincronizada con los datos
@@ -240,6 +272,11 @@ app.post('/api/db/:table', authenticate, async (req, res) => {
 
 app.put('/api/db/:table/:idColumn/:idValue', authenticate, async (req, res) => {
     try {
+        // Igual que en el POST genérico: si esta actualización toca la contraseña de un usuario
+        // (cambio propio, reseteo de admin, edición), se hashea antes de guardarla.
+        if (req.params.table === 'users' && req.body.password) {
+            req.body.password = await bcrypt.hash(req.body.password, BCRYPT_ROUNDS);
+        }
         const { data, error } = await supabase.from(req.params.table).update(req.body).eq(req.params.idColumn, req.params.idValue).select();
         if (error) throw error;
         await prefetchData();
@@ -295,7 +332,21 @@ app.post('/api/auth/login', async (req, res) => {
         });
     }
 
-    if (user.password !== password) {
+    // Contraseñas ya migradas se comparan con bcrypt; si por alguna razón una cuenta todavía no
+    // pasó por la migración de arranque, se compara en texto plano como respaldo puntual y, si
+    // coincide, se hashea y guarda en el momento (así nunca queda una ventana insegura).
+    let passwordMatches;
+    if (isBcryptHash(user.password)) {
+        passwordMatches = await bcrypt.compare(password, user.password);
+    } else {
+        passwordMatches = user.password === password;
+        if (passwordMatches) {
+            const hashed = await bcrypt.hash(password, BCRYPT_ROUNDS);
+            await supabase.from('users').update({ password: hashed }).eq('id', user.id);
+        }
+    }
+
+    if (!passwordMatches) {
         const intentos = (failedLoginAttempts.get(username) || 0) + 1;
 
         if (intentos >= MAX_LOGIN_ATTEMPTS) {
@@ -364,8 +415,9 @@ app.post('/api/auth/reset/confirm', async (req, res) => {
     const targetUser = userRows && userRows[0];
     const wasBlocked = targetUser && targetUser.estado && targetUser.estado.toLowerCase() === 'bloqueado';
 
+    const hashedNewPassword = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
     const { error: updateErr } = await supabase.from('users')
-        .update({ password: newPassword, ...(wasBlocked ? { estado: 'activo' } : {}) })
+        .update({ password: hashedNewPassword, ...(wasBlocked ? { estado: 'activo' } : {}) })
         .eq('email', email);
     if (updateErr) return res.status(500).json({ error: 'Error updating password' });
 
