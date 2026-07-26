@@ -12,7 +12,8 @@
     "role",
     "estado",
     "regions",
-    "nombre"
+    "nombre",
+    "intentos_fallidos"
   ],
   "roles": [
     "id_rol",

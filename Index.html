@@ -1278,6 +1278,11 @@ async function handleNotifClick(id) {
     const n = db.notificaciones.find(x => x.id == id);
     if(n) {
         n.leido = true;
+        showNotifModal = false;
+        if (notifOutsideClickHandler) {
+            document.removeEventListener('click', notifOutsideClickHandler);
+            notifOutsideClickHandler = null;
+        }
         renderTopbar();
         renderSidebarBadges();
         try {
@@ -1343,7 +1348,7 @@ function navigate(viewName, params = null) {
     currentParams = params;
     const app = document.getElementById('app');
     if (viewName === 'login') { app.innerHTML = renderLogin(); return; }
-    if (viewName === 'forgot-password') { app.innerHTML = renderForgotPassword(); return; }
+    if (viewName === 'forgot-password') { app.innerHTML = renderForgotPassword(params); return; }
     if (viewName === 'reset-password') { app.innerHTML = renderResetPassword(params); return; }
 
     // Cada vista requiere el permiso definido en VIEW_PERMISSIONS (viene de la BD). Si el
@@ -1496,8 +1501,22 @@ function renderTopbar() {
         </div>
     `;
 }
+// Referencia al listener de "cerrar al hacer clic afuera" actualmente activo (si hay uno), para
+// poder quitarlo siempre antes de decidir si hace falta uno nuevo. Si se cerraba el panel haciendo
+// clic en la campana (en vez de clic afuera) este listener quedaba huérfano pegado al document; la
+// próxima vez que se abría el panel, renderTopbar() reemplaza el DOM de la campana, así que el
+// listener viejo evaluaba el clic de apertura como "afuera" (el target original ya no pertenece al
+// nuevo elemento) y cerraba el panel al instante, en el mismo clic.
+let notifOutsideClickHandler = null;
+
 function toggleNotifModal() {
     showNotifModal = !showNotifModal;
+
+    if (notifOutsideClickHandler) {
+        document.removeEventListener('click', notifOutsideClickHandler);
+        notifOutsideClickHandler = null;
+    }
+
     if(showNotifModal) {
         const toMark = db.notificaciones.filter(n => n.userId === currentUser.username && !n.leido);
         toMark.forEach(n => { n.leido = true; });
@@ -1507,18 +1526,19 @@ function toggleNotifModal() {
         });
         renderSidebarBadges();
         // Close on outside click
-        const handler = (e) => {
+        notifOutsideClickHandler = (e) => {
             const modal = document.querySelector('.notif-modal');
             const bell = document.querySelector('.bell-icon');
             if(modal && !modal.contains(e.target) && bell && !bell.contains(e.target)) {
                 showNotifModal = false;
                 renderTopbar();
-                document.removeEventListener('click', handler);
+                document.removeEventListener('click', notifOutsideClickHandler);
+                notifOutsideClickHandler = null;
             }
         };
-        setTimeout(() => document.addEventListener('click', handler), 0);
+        setTimeout(() => { if (notifOutsideClickHandler) document.addEventListener('click', notifOutsideClickHandler); }, 0);
     }
-    renderTopbar(); 
+    renderTopbar();
 }
 
 // --- AUTH ---
@@ -1526,7 +1546,10 @@ async function login(e) {
     e.preventDefault();
     const u = document.getElementById('username').value, p = document.getElementById('password').value;
     const btn = document.getElementById('loginSubmitBtn');
-    document.getElementById('loginError').classList.add('hidden');
+    const errorDiv = document.getElementById('loginError');
+    errorDiv.classList.add('hidden');
+    const existingResetLink = document.getElementById('loginResetLink');
+    if (existingResetLink) existingResetLink.remove();
     document.getElementById('username').style.borderColor = '';
     document.getElementById('password').style.borderColor = '';
     if (!lockAction(btn, 'Verificando...')) return;
@@ -1543,18 +1566,37 @@ async function login(e) {
             let found = db.users.find(x => x.username === u);
             if (!found) { await initDB(); found = db.users.find(x => x.username === u); }
             if (found) {
-                if (found.estado && found.estado.toLowerCase() === 'inactivo') throw new Error('Usuario inactivo. Contacte al administrador.');
+                if (found.estado && found.estado.toLowerCase() === 'inactivo') throw { message: 'Usuario inactivo. Contacte al administrador.' };
                 currentUser = found;
                 navigate(firstAccessibleView());
             }
-            else throw new Error('Credenciales inválidas');
+            else throw { message: 'Credenciales inválidas' };
+        } else if (res.status === 423) {
+            // Cuenta bloqueada por 3 intentos fallidos: la única salida es restablecer la
+            // contraseña por correo, así que se ofrece el enlace directamente en el error.
+            const data = await res.json().catch(() => ({}));
+            document.getElementById('loginErrorText').innerText = data.error || 'Cuenta bloqueada por múltiples intentos fallidos.';
+            const resetLink = document.createElement('a');
+            resetLink.id = 'loginResetLink';
+            resetLink.href = '#';
+            resetLink.className = 'auth-link';
+            resetLink.style.display = 'block';
+            resetLink.style.marginTop = '0.5rem';
+            resetLink.textContent = 'Restablecer contraseña →';
+            resetLink.onclick = (ev) => { ev.preventDefault(); navigate('forgot-password', { username: u }); };
+            errorDiv.appendChild(resetLink);
+            errorDiv.classList.remove('hidden');
+            document.getElementById('username').style.borderColor = 'var(--status-high)';
+            document.getElementById('password').style.borderColor = 'var(--status-high)';
+            unlockAction(btn);
+            return;
         } else {
-            throw new Error('Credenciales inválidas');
+            const data = await res.json().catch(() => ({}));
+            throw { message: data.error === 'Usuario inactivo. Contacte al administrador.' ? data.error : 'Credenciales inválidas. Verifica tu usuario y contraseña.' };
         }
     } catch (err) {
-        const errorDiv = document.getElementById('loginError');
         errorDiv.classList.remove('hidden');
-        document.getElementById('loginErrorText').innerText = err.message === 'Usuario inactivo. Contacte al administrador.' ? err.message : 'Credenciales inválidas. Verifica tu usuario y contraseña.';
+        document.getElementById('loginErrorText').innerText = err.message || 'Credenciales inválidas. Verifica tu usuario y contraseña.';
         document.getElementById('username').style.borderColor = 'var(--status-high)';
         document.getElementById('password').style.borderColor = 'var(--status-high)';
     }
@@ -1777,7 +1819,11 @@ function renderLogin() {
 }
 
 // --- PASSWORD RESET ---
-function renderForgotPassword() {
+function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function renderForgotPassword(params = null) {
+    const defaultUsername = params && params.username ? params.username : '';
     return `<div class="auth-form-panel" style="min-height: 100vh;">
         <div class="auth-form-wrap view-enter">
             <div class="auth-form-card">
@@ -1786,14 +1832,14 @@ function renderForgotPassword() {
             </div>
             <div class="auth-form-header">
                 <h2 class="auth-form-title">Recuperar contraseña</h2>
-                <p class="auth-form-desc">Ingresa tu usuario y te enviaremos un token de seguridad a tu correo electrónico asociado.</p>
+                <p class="auth-form-desc">Ingresa tu usuario y te enviaremos un código de seguridad a tu correo electrónico asociado.</p>
             </div>
             <form onsubmit="sendResetEmail(event)" class="flex flex-col gap-4 text-left">
                 <div class="input-group">
                     <label for="resetUsername">Usuario</label>
                     <div class="input-icon-wrap">
                         <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                        <input type="text" id="resetUsername" class="input-field w-full" placeholder="ej. gerente" required minlength="4" maxlength="50">
+                        <input type="text" id="resetUsername" class="input-field w-full" placeholder="ej. gerente" required minlength="4" maxlength="50" value="${escapeHtml(defaultUsername)}">
                     </div>
                 </div>
                 <div id="resetError" class="alert-box alert-error hidden">
@@ -1864,7 +1910,7 @@ function renderResetPassword(params = null) {
             </div>
             <div class="auth-form-header">
                 <h2 class="auth-form-title">Ingresar nueva contraseña</h2>
-                <p class="auth-form-desc">Ingresa el token de 6 dígitos que recibiste en tu correo y tu nueva contraseña.</p>
+                <p class="auth-form-desc">Ingresa el código de 6 dígitos que recibiste en tu correo y tu nueva contraseña. El código vale solo por 2 minutos.</p>
             </div>
             <form onsubmit="submitNewPassword(event)" class="flex flex-col gap-4 text-left">
                 <div class="input-group">
@@ -1937,8 +1983,11 @@ async function submitNewPassword(e) {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, token, newPassword: newPass })
         });
-        if (!res.ok) throw new Error('Token inválido o error del servidor');
-        
+        if (!res.ok) {
+            const errBody = await res.json().catch(() => ({}));
+            throw new Error(errBody.error || 'Código inválido o error del servidor');
+        }
+
         alert("¡Contraseña actualizada exitosamente! Ya puedes iniciar sesión.");
         navigate('login');
     } catch (ex) {

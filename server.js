@@ -37,7 +37,7 @@ function buildResetEmailHtml(token) {
         <span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#2563eb;">${token}</span>
       </div>
       <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
-        Este código expira pronto. Si tú no solicitaste este cambio, puedes ignorar este correo con seguridad — tu contraseña actual seguirá siendo válida.
+        Este código expira en 2 minutos. Si tú no solicitaste este cambio, puedes ignorar este correo con seguridad — tu contraseña actual seguirá siendo válida.
       </p>
     </div>
     <div style="background:#ffffff;padding:16px 32px;text-align:center;border-top:1px solid #f1f5f9;">
@@ -260,15 +260,46 @@ app.delete('/api/db/:table', async (req, res) => {
 });
 
 // --- AUTH ENDPOINTS ---
+const MAX_LOGIN_ATTEMPTS = 3;
+const RESET_TOKEN_TTL_MS = 2 * 60 * 1000; // el código de recuperación vale por 2 minutos
+
 // 2. Authentication Login
 app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
     const { data: users, error } = await supabase.from('users').select('*').eq('username', username);
-    if (error || users.length === 0) return res.status(401).json({ error: 'User not found' });
-    
+    if (error || users.length === 0) return res.status(401).json({ error: 'Credenciales inválidas' });
+
     const user = users[0];
-    if (user.password !== password) return res.status(401).json({ error: 'Invalid password' });
-    
+    const intentosPrevios = user.intentos_fallidos || 0;
+
+    // Cuenta ya bloqueada por intentos previos: no se valida la contraseña, la única salida es
+    // restablecerla por correo (así un atacante no puede seguir probando contraseñas nunca más).
+    if (intentosPrevios >= MAX_LOGIN_ATTEMPTS) {
+        return res.status(423).json({
+            error: 'Cuenta bloqueada por múltiples intentos fallidos. Restablece tu contraseña con el código que te enviaremos por correo.',
+            locked: true
+        });
+    }
+
+    if (user.password !== password) {
+        const nuevosIntentos = intentosPrevios + 1;
+        await supabase.from('users').update({ intentos_fallidos: nuevosIntentos }).eq('id', user.id);
+
+        if (nuevosIntentos >= MAX_LOGIN_ATTEMPTS) {
+            return res.status(423).json({
+                error: 'Alcanzaste el límite de 3 intentos. Cuenta bloqueada: restablece tu contraseña con el código que te enviaremos por correo.',
+                locked: true
+            });
+        }
+        return res.status(401).json({ error: 'Credenciales inválidas', attemptsRemaining: MAX_LOGIN_ATTEMPTS - nuevosIntentos });
+    }
+
+    // Login correcto: se limpia el contador de intentos fallidos si tenía alguno acumulado.
+    if (intentosPrevios > 0) {
+        await supabase.from('users').update({ intentos_fallidos: 0 }).eq('id', user.id);
+        user.intentos_fallidos = 0;
+    }
+
     // Generate JWT
     const token = jwt.sign({ username: user.username, email: user.email }, process.env.JWT_SECRET, { expiresIn: '8h' });
     res.json({ token, user });
@@ -303,13 +334,20 @@ app.post('/api/auth/reset', async (req, res) => {
 // 4. Password Reset Confirm
 app.post('/api/auth/reset/confirm', async (req, res) => {
     const { email, token, newPassword } = req.body;
-    
+
     const { data: tokens, error } = await supabase.from('password_reset_tokens').select('*').eq('email', email).eq('token', token);
-    if (error || tokens.length === 0) return res.status(400).json({ error: 'Invalid token' });
-    
-    const { error: updateErr } = await supabase.from('users').update({ password: newPassword }).eq('email', email);
+    if (error || tokens.length === 0) return res.status(400).json({ error: 'Código inválido' });
+
+    const tokenAgeMs = Date.now() - new Date(tokens[0].created_at).getTime();
+    if (tokenAgeMs > RESET_TOKEN_TTL_MS) {
+        await supabase.from('password_reset_tokens').delete().eq('email', email);
+        return res.status(400).json({ error: 'El código expiró (vale por 2 minutos). Solicita uno nuevo.' });
+    }
+
+    // Restablecer la contraseña también desbloquea la cuenta si estaba bloqueada por intentos fallidos.
+    const { error: updateErr } = await supabase.from('users').update({ password: newPassword, intentos_fallidos: 0 }).eq('email', email);
     if (updateErr) return res.status(500).json({ error: 'Error updating password' });
-    
+
     await supabase.from('password_reset_tokens').delete().eq('email', email);
     await prefetchData();
     res.json({ success: true });
