@@ -585,7 +585,7 @@ input[type="file"]::file-selector-button:hover { background: #d1d5db; }
 <div id="modal-estudio" class="modal-overlay hidden view-enter">
     <div class="modal-content glass-card p-6" style="max-width: 500px;">
         <h2 class="text-2xl font-bold mb-4">Agregar Estudio / Titulación</h2>
-        <form id="formEstudio" class="flex flex-col gap-4">
+        <form id="formEstudio" class="flex flex-col gap-4" novalidate>
             <input type="hidden" id="estudioPersonaId">
             <div><label class="text-xs text-secondary">Título / Carrera</label><input type="text" id="estudioTitulo" class="input-field w-full" required minlength="5" maxlength="100"></div>
             <div><label class="text-xs text-secondary">Institución</label><input type="text" id="estudioInstitucion" class="input-field w-full" required minlength="4" maxlength="100"></div>
@@ -613,7 +613,7 @@ input[type="file"]::file-selector-button:hover { background: #d1d5db; }
 <div id="modal-referencia" class="modal-overlay hidden view-enter">
     <div class="modal-content glass-card p-6" style="max-width: 500px;">
         <h2 class="text-2xl font-bold mb-4">Agregar Referencia Laboral</h2>
-        <form id="formReferencia" class="flex flex-col gap-4">
+        <form id="formReferencia" class="flex flex-col gap-4" novalidate>
             <input type="hidden" id="refPersonaId">
             <div><label class="text-xs text-secondary">Empresa / Contacto</label><input type="text" id="refContacto" class="input-field w-full" required minlength="3" maxlength="100"></div>
             <div class="flex gap-2">
@@ -736,6 +736,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Formulario de Estudios
     document.getElementById('formEstudio')?.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (!validarFormulario(e.target)) return;
         const btn = document.getElementById('btnSaveEstudio');
         if (!lockAction(btn, 'Subiendo al Storage...')) return;
         try {
@@ -777,6 +778,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Formulario de Referencias
     document.getElementById('formReferencia')?.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (!validarFormulario(e.target)) return;
         const btn = document.getElementById('btnSaveRef');
         if (!lockAction(btn, 'Subiendo al Storage...')) return;
         try {
@@ -1552,6 +1554,7 @@ async function login(e) {
     if (existingResetLink) existingResetLink.remove();
     document.getElementById('username').style.borderColor = '';
     document.getElementById('password').style.borderColor = '';
+    if (!validarFormulario(e.target)) return;
     if (!lockAction(btn, 'Verificando...')) return;
     try {
         const res = await fetch('/api/auth/login', {
@@ -1648,7 +1651,7 @@ function modalCambiarClave() {
     const lockIcon = `<svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
     const form = `
         <h3 class="font-bold text-xl mb-4" style="color: var(--cantv-blue-light);">Cambiar Contraseña</h3>
-        <form onsubmit="submitCambiarClave(event)" class="flex flex-col gap-4 text-left">
+        <form onsubmit="submitCambiarClave(event)" class="flex flex-col gap-4 text-left" novalidate>
             <div class="input-group">
                 <label for="ccActual">Contraseña actual</label>
                 <div class="input-icon-wrap">
@@ -1688,6 +1691,7 @@ function modalCambiarClave() {
 
 async function submitCambiarClave(e) {
     e.preventDefault();
+    if (!validarFormulario(e.target)) return;
     const actual = document.getElementById('ccActual').value;
     const nueva = document.getElementById('ccNueva').value;
     const confirmar = document.getElementById('ccConfirmar').value;
@@ -1784,7 +1788,7 @@ function renderLogin() {
                 <div class="auth-form-header">
                     <h2 class="auth-form-title">Iniciar sesión</h2>
                 </div>
-                <form onsubmit="login(event)" class="flex flex-col gap-4 text-left" autocomplete="off">
+                <form onsubmit="login(event)" class="flex flex-col gap-4 text-left" autocomplete="off" novalidate>
                     <div class="input-group">
                         <label for="username">Usuario</label>
                         <div class="input-icon-wrap">
@@ -1834,7 +1838,7 @@ function renderForgotPassword(params = null) {
                 <h2 class="auth-form-title">Recuperar contraseña</h2>
                 <p class="auth-form-desc">Ingresa tu usuario y te enviaremos un código de seguridad a tu correo electrónico asociado.</p>
             </div>
-            <form onsubmit="sendResetEmail(event)" class="flex flex-col gap-4 text-left">
+            <form onsubmit="sendResetEmail(event)" class="flex flex-col gap-4 text-left" novalidate>
                 <div class="input-group">
                     <label for="resetUsername">Usuario</label>
                     <div class="input-icon-wrap">
@@ -1866,12 +1870,13 @@ function renderForgotPassword(params = null) {
 
 async function sendResetEmail(e) {
     e.preventDefault();
-    const username = document.getElementById('resetUsername').value.trim();
     const err = document.getElementById('resetError');
     const succ = document.getElementById('resetSuccess');
     const btn = document.getElementById('btnSendEmail');
 
     err.classList.add('hidden'); succ.classList.add('hidden');
+    if (!validarFormulario(e.target)) return;
+    const username = document.getElementById('resetUsername').value.trim();
     if (!lockAction(btn, 'Enviando...')) return;
 
     try {
@@ -1912,7 +1917,7 @@ function renderResetPassword(params = null) {
                 <h2 class="auth-form-title">Ingresar nueva contraseña</h2>
                 <p class="auth-form-desc">Ingresa el código de 6 dígitos que recibiste en tu correo y tu nueva contraseña. El código vale solo por 2 minutos.</p>
             </div>
-            <form onsubmit="submitNewPassword(event)" class="flex flex-col gap-4 text-left">
+            <form onsubmit="submitNewPassword(event)" class="flex flex-col gap-4 text-left" novalidate>
                 <div class="input-group">
                     <label for="confirmEmail">Correo electrónico</label>
                     <div class="input-icon-wrap">
@@ -1962,11 +1967,14 @@ function renderResetPassword(params = null) {
 
 async function submitNewPassword(e) {
     e.preventDefault();
+    const err = document.getElementById('confirmError');
+    err.classList.add('hidden');
+    if (!validarFormulario(e.target)) return;
+
     const email = document.getElementById('confirmEmail').value.trim();
     const token = document.getElementById('confirmToken').value.trim();
     const newPass = document.getElementById('newPassword').value;
     const confirmPass = document.getElementById('confirmNewPassword').value;
-    const err = document.getElementById('confirmError');
     const btn = document.getElementById('btnConfirmReset');
 
     if (newPass !== confirmPass) {
@@ -1975,7 +1983,6 @@ async function submitNewPassword(e) {
         return;
     }
 
-    err.classList.add('hidden');
     if (!lockAction(btn, 'Verificando...')) return;
 
     try {
@@ -2476,7 +2483,7 @@ function renderCreateSolicitud() {
     return `<div class="view-enter max-w-3xl">
         <h1 class="text-3xl font-bold mb-6">Registrar Nueva Incidencia</h1>
         <div class="glass-card">
-            <form onsubmit="crearSolicitud(event)" class="flex flex-col gap-4">
+            <form onsubmit="crearSolicitud(event)" class="flex flex-col gap-4" novalidate>
                 <div class="form-group"><label class="form-label">Descripción de la Incidencia</label>
                     <input type="text" id="solAsunto" class="input-field" required minlength="10" maxlength="200" autocomplete="off"></div>
                 <div class="form-group"><label class="form-label">Criticidad Percibida</label>
@@ -2588,6 +2595,7 @@ function renderFileBadge(fileObj, uploaderUsername) {
 
 async function crearSolicitud(e) {
     e.preventDefault();
+    if (!validarFormulario(e.target)) return;
     const btn = e.target.querySelector('button[type="submit"]');
     if (!lockAction(btn)) return;
 
@@ -3403,7 +3411,7 @@ function renderCaseDetail(id) {
             <p style="color:#f87171;font-size:0.8rem;font-weight:600;margin-bottom:0.4rem">Correcciones requeridas:</p>
             ${rejMsgs.slice(-3).map(m => `<p style="color:#fca5a5;font-size:0.8rem;margin-bottom:0.2rem">→ <em>${m.autor}</em>: ${m.texto.replace('RECHAZADO: ', '')}</p>`).join('')}
         </div>` : '';
-        actions = `${rejHtml}<form onsubmit="submitSust(event, '${id}')" class="flex flex-col gap-4 mt-2">
+        actions = `${rejHtml}<form onsubmit="submitSust(event, '${id}')" class="flex flex-col gap-4 mt-2" novalidate>
             <textarea id="sustText" class="input-field" rows="4" required minlength="20" maxlength="1000" placeholder="Hallazgos y Sustanciación...">${hasExisting ? hasExisting.detalle : ''}</textarea>
             <div class="case-actions-file-row">
                 <div class="form-group">
@@ -3454,7 +3462,7 @@ function renderCaseDetail(id) {
     }
     // GERENTE: Cerrar caso
     else if (c.estado === ESTADOS_CASO.REVISION_GERENCIA && hasPermission('cerrar_caso')) {
-        actions = `<form onsubmit="cerrarCasoGerencia(event, '${id}')" class="flex flex-col gap-4 mt-4">
+        actions = `<form onsubmit="cerrarCasoGerencia(event, '${id}')" class="flex flex-col gap-4 mt-4" novalidate>
             <p class="text-sm text-muted">Cargar Memorándum Final para cerrar el expediente.</p>
             <input type="file" id="memoPdf" class="input-field" required accept=".pdf" style="padding-top:10px;">
             <button class="btn btn-primary">Aprobar Final, Cerrar Caso y Emitir Memo</button>
@@ -3656,6 +3664,7 @@ async function iniciarSustanciacion(id) {
 }
 async function submitSust(e, id) {
     e.preventDefault();
+    if (!validarFormulario(e.target)) return;
     const btn = e.target.querySelector('button');
 
     // Validar que al menos el Documento 1 esté adjunto
@@ -3944,6 +3953,7 @@ async function superAsignarEsp(id) {
 }
 async function cerrarCasoGerencia(e, id) {
     e.preventDefault();
+    if (!validarFormulario(e.target)) return;
     const btn = e.target.querySelector('button');
     if (!lockAction(btn)) return;
     try {
@@ -4103,7 +4113,7 @@ function renderCreatePersona() {
             <button class="btn btn-secondary" onclick="navigate('expedientes')">Volver</button>
         </div>
 
-        <form onsubmit="submitPersona(event)" class="flex flex-col gap-6">
+        <form onsubmit="submitPersona(event)" class="flex flex-col gap-6" novalidate>
             <div class="case-block">
                 <div class="case-block-header">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -4207,6 +4217,7 @@ function renderCreatePersona() {
 
 async function submitPersona(e) {
     e.preventDefault();
+    if (!validarFormulario(e.target)) return;
     const btn = document.getElementById('btnGuardarPersona');
 
     const ced = document.getElementById('perCedula').value.trim();
@@ -4350,6 +4361,40 @@ function marcarCampoInvalido(input, mensaje) {
     input.style.borderColor = 'var(--status-high)';
     input.focus();
     showToast(mensaje, 'warning');
+}
+
+// Valida un formulario usando las reglas HTML5 ya declaradas en sus campos (required, minlength,
+// maxlength, pattern, type=email, etc.) pero sin las burbujas nativas del navegador, que podían
+// aparecer mientras el usuario aún estaba escribiendo. El formulario debe llevar el atributo
+// `novalidate` para que el navegador no muestre su propio aviso antes (o en paralelo) de este.
+// Se detiene en el primer campo inválido y muestra un único toast, para que nunca se amontonen
+// varias alertas a la vez.
+function validarFormulario(form) {
+    const invalid = form.querySelector(':invalid');
+    if (!invalid) return true;
+
+    // Busca el <label> más cercano y relevante: primero dentro de un contenedor conocido
+    // (.form-group/.input-group), si no, solo entre los hijos directos del padre inmediato —
+    // nunca una búsqueda profunda, para no engancharse con el label de OTRO campo del formulario.
+    const scopedContainer = invalid.closest('.form-group, .input-group');
+    const labelText = scopedContainer?.querySelector('label')?.textContent
+        || invalid.parentElement?.querySelector(':scope > label')?.textContent;
+    const label = (labelText || invalid.placeholder || invalid.name
+        || (invalid.type === 'file' ? 'El archivo' : 'Este campo')).replace(/\*$/, '').trim();
+
+    let mensaje;
+    if (invalid.validity.valueMissing) mensaje = invalid.type === 'file' ? `Debe adjuntar ${label === 'El archivo' ? 'un archivo' : label}.` : `${label} es obligatorio.`;
+    else if (invalid.validity.tooShort) mensaje = `${label} debe tener al menos ${invalid.minLength} caracteres.`;
+    else if (invalid.validity.tooLong) mensaje = `${label} no puede superar los ${invalid.maxLength} caracteres.`;
+    else if (invalid.validity.patternMismatch) mensaje = invalid.title ? `${label}: ${invalid.title}` : `${label} tiene un formato inválido.`;
+    else if (invalid.validity.typeMismatch) mensaje = `${label} tiene un formato inválido.`;
+    else mensaje = invalid.validationMessage || `${label} es inválido.`;
+
+    invalid.style.borderColor = 'var(--status-high)';
+    invalid.focus();
+    if (invalid.scrollIntoView) invalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    showToast(mensaje, 'warning');
+    return false;
 }
 
 async function adminCrearUsuario(e) {
