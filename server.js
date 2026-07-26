@@ -85,6 +85,15 @@ let dbCache = null;
 let dbCacheTime = 0;
 const DB_CACHE_TTL_MS = 60 * 1000; // recarga sola cada 60s, para reflejar cambios hechos directo en Supabase
 
+// La contraseña nunca debe llegar al navegador: se quita de cualquier fila (o arreglo de filas)
+// de la tabla users antes de responder, sin importar por qué endpoint salga.
+function stripPassword(rows) {
+    if (!rows) return rows;
+    if (Array.isArray(rows)) return rows.map(({ password, ...rest }) => rest);
+    const { password, ...rest } = rows;
+    return rest;
+}
+
 async function prefetchData() {
     try {
         const [users, solicitudes, investigaciones, estadoHistorial, comentarios, invPersona, personas, estudios, referencias, roles, permissions, roleHasPermissions, positions, regions, units, general_managements, line_managements, notificaciones, documents] = await Promise.all([
@@ -110,7 +119,7 @@ async function prefetchData() {
         ]);
 
         dbCache = {
-            users: users.data,
+            users: stripPassword(users.data),
             solicitudes: solicitudes.data,
             investigaciones: investigaciones.data,
             estadoHistorial: estadoHistorial.data,
@@ -135,7 +144,7 @@ async function prefetchData() {
 }
 prefetchData();
 
-app.get('/api/db/init', async (req, res) => {
+app.get('/api/db/init', authenticate, async (req, res) => {
     try {
         if (dbCache && (Date.now() - dbCacheTime) < DB_CACHE_TTL_MS) {
             return res.json(dbCache);
@@ -164,7 +173,7 @@ app.get('/api/db/init', async (req, res) => {
         ]);
 
         const newData = {
-            users: users.data,
+            users: stripPassword(users.data),
             solicitudes: solicitudes.data,
             investigaciones: investigaciones.data,
             estadoHistorial: estadoHistorial.data,
@@ -194,7 +203,7 @@ app.get('/api/db/init', async (req, res) => {
 });
 
 // --- GENERIC DB CRUD & UPLOAD ENDPOINTS ---
-app.post('/api/upload', async (req, res) => {
+app.post('/api/upload', authenticate, async (req, res) => {
     try {
         const { fileBase64, fileName } = req.body;
         if (!fileBase64) return res.status(400).json({ error: 'No file provided' });
@@ -203,7 +212,7 @@ app.post('/api/upload', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/db/:table', async (req, res) => {
+app.post('/api/db/:table', authenticate, async (req, res) => {
     try {
         let { data, error } = await supabase.from(req.params.table).insert(req.body).select();
 
@@ -222,19 +231,19 @@ app.post('/api/db/:table', async (req, res) => {
 
         if (error) throw error;
         await prefetchData();
-        res.json({ success: true, data });
+        res.json({ success: true, data: req.params.table === 'users' ? stripPassword(data) : data });
     } catch (e) {
         console.error(`POST /api/db/${req.params.table} ERROR:`, e);
         res.status(500).json({ error: e.message });
     }
 });
 
-app.put('/api/db/:table/:idColumn/:idValue', async (req, res) => {
+app.put('/api/db/:table/:idColumn/:idValue', authenticate, async (req, res) => {
     try {
         const { data, error } = await supabase.from(req.params.table).update(req.body).eq(req.params.idColumn, req.params.idValue).select();
         if (error) throw error;
         await prefetchData();
-        res.json({ success: true, data });
+        res.json({ success: true, data: req.params.table === 'users' ? stripPassword(data) : data });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -242,7 +251,7 @@ app.put('/api/db/:table/:idColumn/:idValue', async (req, res) => {
 // que ya usa el frontend (p.ej. para desvincular una persona de un caso). Antes no existía ninguna
 // ruta DELETE, así que estas peticiones fallaban con 404 en silencio (el frontend no revisaba
 // res.ok) y el registro nunca se borraba realmente de la base de datos.
-app.delete('/api/db/:table', async (req, res) => {
+app.delete('/api/db/:table', authenticate, async (req, res) => {
     try {
         let query = supabase.from(req.params.table).delete();
         for (const [key, rawValue] of Object.entries(req.query)) {
@@ -307,7 +316,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     // Generate JWT
     const token = jwt.sign({ username: user.username, email: user.email }, process.env.JWT_SECRET, { expiresIn: '8h' });
-    res.json({ token, user });
+    res.json({ token, user: stripPassword(user) });
 });
 
 // 3. Password Reset Request
@@ -528,7 +537,7 @@ generarReporteMensualSiCorresponde();
 setInterval(generarReporteMensualSiCorresponde, 6 * 60 * 60 * 1000);
 
 // 5. Agregar Estudio
-app.post('/api/expedientes/estudios', async (req, res) => {
+app.post('/api/expedientes/estudios', authenticate, async (req, res) => {
     try {
         const { persona_id, titulo, institucion, estado_estudio, fileName, fileBase64 } = req.body;
         let url = null;
@@ -550,7 +559,7 @@ app.post('/api/expedientes/estudios', async (req, res) => {
 });
 
 // 6. Agregar Referencia Laboral
-app.post('/api/expedientes/referencias', async (req, res) => {
+app.post('/api/expedientes/referencias', authenticate, async (req, res) => {
     try {
         const { persona_id, referencia_contacto, telefono_contacto, fecha_inicio, fecha_fin, salario, motivo_egreso, fileName, fileBase64 } = req.body;
         let url = null;
@@ -573,7 +582,7 @@ app.post('/api/expedientes/referencias', async (req, res) => {
 
 // 7. Generar PDF de reporte bajo demanda (botón "Generar Reporte Mensual" del Dashboard).
 // Devuelve el PDF directamente como descarga, sin depender del diálogo de impresión del navegador.
-app.post('/api/reports/pdf', async (req, res) => {
+app.post('/api/reports/pdf', authenticate, async (req, res) => {
     try {
         const { titulo, generadoPor, total, tasaCierre, avgDays, cumplimiento } = req.body;
         const pdfBuffer = await buildReportePdf(

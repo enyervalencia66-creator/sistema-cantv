@@ -638,6 +638,26 @@ input[type="file"]::file-selector-button:hover { background: #d1d5db; }
 </div>
 
     <script>
+// El backend ahora exige un JWT válido en /api/db/*, /api/upload, /api/expedientes/* y
+// /api/reports/*. En vez de tocar cada llamada fetch() existente una por una, se envuelve el
+// fetch global: toda petición same-origin a /api/ (menos /api/auth/*, que es pre-login por
+// naturaleza) se manda con el token de sesión ya puesto.
+(function() {
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = (input, options = {}) => {
+        const url = typeof input === 'string' ? input : (input && input.url) || '';
+        const isApi = url.startsWith('/api/');
+        const isPublicAuth = url.startsWith('/api/auth/');
+        if (isApi && !isPublicAuth) {
+            const token = sessionStorage.getItem('cantv_token');
+            if (token) {
+                options = { ...options, headers: { ...(options.headers || {}), 'Authorization': `Bearer ${token}` } };
+            }
+        }
+        return nativeFetch(input, options);
+    };
+})();
+
 // --- INLINE ACTIONS SYSTEM ---
 let sidebarCollapsed = false;
 
@@ -1029,7 +1049,6 @@ async function initDB() {
                     username: u.username,
                     email: u.email,
                     telefono: u.telefono,
-                    password: u.password,
                     role: userRoleName, // Store the string name for backward compatibility with UI
                     role_id: roleObj ? roleObj.id_rol : null,
                     permissions: userPerms,
@@ -1714,9 +1733,8 @@ async function submitCambiarClave(e) {
 
     if (!lockAction(btn, 'Verificando...')) return;
     try {
-        // La contraseña actual se valida contra el servidor (fuente real), no contra el
-        // caché local: currentUser.password puede quedar desactualizado si el admin
-        // reestableció la clave en Supabase después de que este cliente cargó los datos.
+        // La contraseña actual se valida contra el servidor: el navegador nunca guarda ni recibe
+        // contraseñas de nadie, así que no hay caché local contra la cual comparar.
         const verifyRes = await fetch('/api/auth/login', {
             method: 'POST', headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ username: currentUser.username, password: actual })
@@ -1732,10 +1750,6 @@ async function submitCambiarClave(e) {
             method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ password: nueva })
         });
         if (!res.ok) throw new Error('request failed');
-
-        currentUser.password = nueva;
-        const cached = db.users.find(u => u.id === currentUser.id);
-        if (cached) cached.password = nueva;
 
         closeModalUI(true);
         showToast('Contraseña actualizada exitosamente', 'success');
@@ -4506,7 +4520,6 @@ async function adminCrearUsuario(e) {
                 username: u.username,
                 email: u.email,
                 telefono: u.telefono,
-                password: u.password,
                 role: roleObj ? roleObj.name : 'Invitado',
                 role_id: roleObj ? roleObj.id_rol : null,
                 permissions: userPerms,
@@ -4706,16 +4719,25 @@ function toggleTimelinePin(el) {
 }
 
 async function bootApp() {
-    await initDB();
+    // /api/db/init ahora exige sesión: si no hay token guardado, ni se intenta (así un visitante
+    // sin loguearse nunca recibe ningún dato). Si el token existe pero ya no es válido (expiró o
+    // el servidor se reinició), la petición falla y se limpia la sesión vieja.
     const token = sessionStorage.getItem('cantv_token');
     const user = sessionStorage.getItem('cantv_user');
     if (token && user) {
-        const found = db.users.find(x => x.username === user);
-        if (found && (!found.estado || found.estado.toLowerCase() !== 'inactivo')) {
-            currentUser = found;
-            resetInactivityTimer();
-            return navigate('casos');
+        try {
+            await initDB();
+            const found = db.users.find(x => x.username === user);
+            if (found && (!found.estado || found.estado.toLowerCase() !== 'inactivo')) {
+                currentUser = found;
+                resetInactivityTimer();
+                return navigate('casos');
+            }
+        } catch (e) {
+            console.error('No se pudo restaurar la sesión:', e);
         }
+        sessionStorage.removeItem('cantv_token');
+        sessionStorage.removeItem('cantv_user');
     }
     navigate('login');
 }
