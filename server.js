@@ -263,6 +263,12 @@ app.delete('/api/db/:table', async (req, res) => {
 const MAX_LOGIN_ATTEMPTS = 3;
 const RESET_TOKEN_TTL_MS = 2 * 60 * 1000; // el código de recuperación vale por 2 minutos
 
+// Contador de intentos fallidos por username, solo en memoria del proceso: no requiere ninguna
+// columna nueva en la tabla users. Se reinicia si el servidor se reinicia/redeploya, pero eso es
+// aceptable aquí — lo único que necesita sobrevivir entre sesiones es el bloqueo ya aplicado, que
+// sí se persiste reutilizando la columna `estado` existente (mismo campo que ya usa 'activo'/'inactivo').
+const failedLoginAttempts = new Map();
+
 // 2. Authentication Login
 app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
@@ -270,11 +276,10 @@ app.post('/api/auth/login', async (req, res) => {
     if (error || users.length === 0) return res.status(401).json({ error: 'Credenciales inválidas' });
 
     const user = users[0];
-    const intentosPrevios = user.intentos_fallidos || 0;
 
     // Cuenta ya bloqueada por intentos previos: no se valida la contraseña, la única salida es
     // restablecerla por correo (así un atacante no puede seguir probando contraseñas nunca más).
-    if (intentosPrevios >= MAX_LOGIN_ATTEMPTS) {
+    if (user.estado && user.estado.toLowerCase() === 'bloqueado') {
         return res.status(423).json({
             error: 'Cuenta bloqueada por múltiples intentos fallidos. Restablece tu contraseña con el código que te enviaremos por correo.',
             locked: true
@@ -282,23 +287,23 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     if (user.password !== password) {
-        const nuevosIntentos = intentosPrevios + 1;
-        await supabase.from('users').update({ intentos_fallidos: nuevosIntentos }).eq('id', user.id);
+        const intentos = (failedLoginAttempts.get(username) || 0) + 1;
 
-        if (nuevosIntentos >= MAX_LOGIN_ATTEMPTS) {
+        if (intentos >= MAX_LOGIN_ATTEMPTS) {
+            failedLoginAttempts.delete(username);
+            await supabase.from('users').update({ estado: 'bloqueado' }).eq('id', user.id);
+            await prefetchData();
             return res.status(423).json({
                 error: 'Alcanzaste el límite de 3 intentos. Cuenta bloqueada: restablece tu contraseña con el código que te enviaremos por correo.',
                 locked: true
             });
         }
-        return res.status(401).json({ error: 'Credenciales inválidas', attemptsRemaining: MAX_LOGIN_ATTEMPTS - nuevosIntentos });
+        failedLoginAttempts.set(username, intentos);
+        return res.status(401).json({ error: 'Credenciales inválidas', attemptsRemaining: MAX_LOGIN_ATTEMPTS - intentos });
     }
 
     // Login correcto: se limpia el contador de intentos fallidos si tenía alguno acumulado.
-    if (intentosPrevios > 0) {
-        await supabase.from('users').update({ intentos_fallidos: 0 }).eq('id', user.id);
-        user.intentos_fallidos = 0;
-    }
+    failedLoginAttempts.delete(username);
 
     // Generate JWT
     const token = jwt.sign({ username: user.username, email: user.email }, process.env.JWT_SECRET, { expiresIn: '8h' });
@@ -344,9 +349,18 @@ app.post('/api/auth/reset/confirm', async (req, res) => {
         return res.status(400).json({ error: 'El código expiró (vale por 2 minutos). Solicita uno nuevo.' });
     }
 
-    // Restablecer la contraseña también desbloquea la cuenta si estaba bloqueada por intentos fallidos.
-    const { error: updateErr } = await supabase.from('users').update({ password: newPassword, intentos_fallidos: 0 }).eq('email', email);
+    // Restablecer la contraseña también desbloquea la cuenta si estaba bloqueada por intentos
+    // fallidos (pero no reactiva una cuenta que un administrador haya puesto en 'inactivo' aparte).
+    const { data: userRows } = await supabase.from('users').select('id, username, estado').eq('email', email);
+    const targetUser = userRows && userRows[0];
+    const wasBlocked = targetUser && targetUser.estado && targetUser.estado.toLowerCase() === 'bloqueado';
+
+    const { error: updateErr } = await supabase.from('users')
+        .update({ password: newPassword, ...(wasBlocked ? { estado: 'activo' } : {}) })
+        .eq('email', email);
     if (updateErr) return res.status(500).json({ error: 'Error updating password' });
+
+    if (targetUser) failedLoginAttempts.delete(targetUser.username);
 
     await supabase.from('password_reset_tokens').delete().eq('email', email);
     await prefetchData();

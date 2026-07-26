@@ -15,7 +15,6 @@ CREATE TABLE public.users (
   estado text,
   regions integer,
   nombre text,
-  intentos_fallidos integer NOT NULL DEFAULT 0,
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_role_fkey FOREIGN KEY (role) REFERENCES public.roles(id_rol),
   CONSTRAINT users_regions_fkey FOREIGN KEY (regions) REFERENCES public.regions(id_region)

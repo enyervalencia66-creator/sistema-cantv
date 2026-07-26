@@ -4309,16 +4309,20 @@ function renderAdminUsers() {
     `;
     
     db.users.forEach(u => {
-        const isInactive = u.estado && u.estado.toLowerCase() === 'inactivo';
+        const estadoLower = (u.estado || 'activo').toLowerCase();
+        const isInactive = estadoLower === 'inactivo';
+        const isBloqueado = estadoLower === 'bloqueado';
         html += `<tr class="table-row">
             <td>${u.username}</td>
             <td>${u.name || u.username}</td>
             <td>${u.email || '-'}</td>
             <td><span class="badge" style="background:var(--glass-bg-strong)">${u.role}</span></td>
-            <td><span class="badge ${isInactive ? 'badge-high' : 'badge-low'}" style="text-transform: capitalize;">${u.estado || 'activo'}</span></td>
+            <td><span class="badge ${isInactive || isBloqueado ? 'badge-high' : 'badge-low'}" style="text-transform: capitalize;">${u.estado || 'activo'}</span></td>
             <td class="text-right flex gap-2 justify-end">
                 <button class="btn btn-secondary btn-sm" onclick="adminModalEditarUsuario('${u.id}')">Editar</button>
-                <button class="btn ${isInactive ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="adminToggleEstado('${u.id}')">${isInactive ? 'Activar' : 'Desactivar'}</button>
+                ${isBloqueado
+                    ? `<button class="btn btn-primary btn-sm" onclick="adminDesbloquearUsuario('${u.id}')">Desbloquear</button>`
+                    : `<button class="btn ${isInactive ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="adminToggleEstado('${u.id}')">${isInactive ? 'Activar' : 'Desactivar'}</button>`}
                 ${hasPermission('reestablecer_contra') ? `<button class="btn btn-secondary btn-sm" onclick="adminResetearClave('${u.id}')">Resetear Clave</button>` : ''}
             </td>
         </tr>`;
@@ -4632,6 +4636,30 @@ async function adminToggleEstado(userId) {
     }
 }
 
+// Desbloquea una cuenta que llegó a 3 intentos fallidos de login (estado 'bloqueado'),
+// devolviéndola a 'activo' sin pasar por el flujo de correo.
+async function adminDesbloquearUsuario(userId) {
+    const btn = event && event.currentTarget ? event.currentTarget : null;
+    if (!lockAction(btn)) return;
+    try {
+        const u = db.users.find(x => x.id == userId);
+        const res = await fetch(`/api/db/users/id/${userId}`, {
+            method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ estado: 'activo' })
+        });
+
+        if(res.ok) {
+            u.estado = 'activo';
+            showToast('Usuario desbloqueado exitosamente', 'success');
+            navigate('admin-users');
+            refreshInBackground();
+        } else {
+            showToast('Error al desbloquear usuario', 'error');
+        }
+    } finally {
+        unlockAction(btn);
+    }
+}
+
 async function adminResetearClave(userId) {
     const btn = event && event.currentTarget ? event.currentTarget : null;
     const ok = await uiConfirm('¿Seguro que desea reestablecer la contraseña de este usuario a "CANTV123"?', 'Reestablecer Contraseña');
@@ -4639,11 +4667,15 @@ async function adminResetearClave(userId) {
 
     if (!lockAction(btn, 'Reestableciendo...')) return;
     try {
+        const u = db.users.find(x => x.id == userId);
+        const wasBlocked = u && u.estado && u.estado.toLowerCase() === 'bloqueado';
+        const payload = wasBlocked ? { password: 'CANTV123', estado: 'activo' } : { password: 'CANTV123' };
         const res = await fetch(`/api/db/users/id/${userId}`, {
-            method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ password: 'CANTV123' })
+            method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
         });
         if(res.ok) {
-            showToast('Contraseña reestablecida exitosamente', 'success');
+            if (wasBlocked && u) u.estado = 'activo';
+            showToast(wasBlocked ? 'Contraseña reestablecida y usuario desbloqueado' : 'Contraseña reestablecida exitosamente', 'success');
         } else {
             showToast('Error al reestablecer contraseña', 'error');
         }
