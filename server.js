@@ -5,7 +5,6 @@ const { createClient } = require('@supabase/supabase-js');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const PDFDocument = require('pdfkit');
-const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
 
 const BCRYPT_ROUNDS = 10;
@@ -21,8 +20,11 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // Using Service Role Key bypasses RLS and allows backend full control.
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Envío de correo real vía Gmail (Nodemailer + contraseña de aplicación). El token nunca
-// se devuelve al navegador: se genera y se envía por email desde el backend únicamente.
+// Envío de correo vía la API HTTPS de Brevo (no SMTP): Render bloquea las conexiones SMTP
+// salientes en su plan gratuito, así que un transporte SMTP tradicional (como el que se usaba
+// antes con Nodemailer + Gmail) nunca llega a conectar ahí. Una petición HTTPS normal sí sale
+// sin problema, porque es indistinguible de cualquier otra llamada que ya hace este servidor.
+// El código nunca se devuelve al navegador: se genera y se envía por email desde el backend únicamente.
 function buildResetEmailHtml(token) {
     // Estilos inline porque los clientes de correo (Outlook, Gmail, etc.) ignoran <style>
     // externos o etiquetas <style> en muchos casos; se evita flexbox/grid por compatibilidad.
@@ -52,21 +54,29 @@ function buildResetEmailHtml(token) {
 }
 
 async function sendResetEmail(toEmail, token) {
-    const gmailUser = process.env.GMAIL_USER;
-    const gmailPass = process.env.GMAIL_APP_PASSWORD;
-    if (!gmailUser || !gmailPass) throw new Error('GMAIL_USER o GMAIL_APP_PASSWORD no configurados en el servidor.');
+    const apiKey = process.env.BREVO_API_KEY;
+    const senderEmail = process.env.BREVO_SENDER_EMAIL;
+    if (!apiKey || !senderEmail) throw new Error('BREVO_API_KEY o BREVO_SENDER_EMAIL no configurados en el servidor.');
 
-    const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: { user: gmailUser, pass: gmailPass }
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+            'accept': 'application/json',
+            'api-key': apiKey,
+            'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+            sender: { name: 'Sistema CANTV', email: senderEmail },
+            to: [{ email: toEmail }],
+            subject: 'Código de recuperación de contraseña - Sistema CANTV',
+            htmlContent: buildResetEmailHtml(token)
+        })
     });
 
-    await transporter.sendMail({
-        from: `"Sistema CANTV" <${gmailUser}>`,
-        to: toEmail,
-        subject: 'Código de recuperación de contraseña - Sistema CANTV',
-        html: buildResetEmailHtml(token)
-    });
+    if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        throw new Error(`Brevo respondió ${res.status}: ${errBody}`);
+    }
 }
 
 // JWT Middleware (Optional for basic thesis demo, but added for structure)
