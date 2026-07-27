@@ -20,10 +20,11 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // Using Service Role Key bypasses RLS and allows backend full control.
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Envío de correo vía la API HTTPS de Brevo (no SMTP): Render bloquea las conexiones SMTP
-// salientes en su plan gratuito, así que un transporte SMTP tradicional (como el que se usaba
-// antes con Nodemailer + Gmail) nunca llega a conectar ahí. Una petición HTTPS normal sí sale
-// sin problema, porque es indistinguible de cualquier otra llamada que ya hace este servidor.
+// Envío de correo vía la API HTTPS de Gmail (no SMTP): Render bloquea las conexiones SMTP
+// salientes en su plan gratuito, así que un transporte SMTP tradicional nunca llega a conectar
+// ahí. La API REST de Gmail es una petición HTTPS normal, indistinguible de cualquier otra
+// llamada que ya hace este servidor, así que no la bloquea. Se autentica con OAuth2 (refresh
+// token de la cuenta de Gmail que envía los correos) en vez de una contraseña de aplicación.
 // El código nunca se devuelve al navegador: se genera y se envía por email desde el backend únicamente.
 function buildResetEmailHtml(token) {
     // Estilos inline porque los clientes de correo (Outlook, Gmail, etc.) ignoran <style>
@@ -53,29 +54,69 @@ function buildResetEmailHtml(token) {
 </div>`;
 }
 
-async function sendResetEmail(toEmail, token) {
-    const apiKey = process.env.BREVO_API_KEY;
-    const senderEmail = process.env.BREVO_SENDER_EMAIL;
-    if (!apiKey || !senderEmail) throw new Error('BREVO_API_KEY o BREVO_SENDER_EMAIL no configurados en el servidor.');
+// Intercambia el refresh token (de larga duración) por un access token (de una hora) — es el
+// paso estándar de OAuth2 antes de poder llamar a la API de Gmail.
+async function getGmailAccessToken() {
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            client_id: process.env.GMAIL_OAUTH_CLIENT_ID,
+            client_secret: process.env.GMAIL_OAUTH_CLIENT_SECRET,
+            refresh_token: process.env.GMAIL_OAUTH_REFRESH_TOKEN,
+            grant_type: 'refresh_token'
+        })
+    });
+    if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw new Error(`No se pudo renovar el token de Gmail: ${res.status} ${body}`);
+    }
+    const data = await res.json();
+    return data.access_token;
+}
 
-    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+// La API de Gmail espera el mensaje como un correo MIME crudo, codificado en base64url —
+// no como campos sueltos (asunto, cuerpo, etc.) como haría un cliente HTTP típico.
+function buildRawGmailMessage({ from, to, subject, html }) {
+    const encodedSubject = `=?UTF-8?B?${Buffer.from(subject, 'utf-8').toString('base64')}?=`;
+    const message = [
+        `From: ${from}`,
+        `To: ${to}`,
+        `Subject: ${encodedSubject}`,
+        'MIME-Version: 1.0',
+        'Content-Type: text/html; charset=UTF-8',
+        '',
+        html
+    ].join('\r\n');
+    return Buffer.from(message).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function sendResetEmail(toEmail, token) {
+    const senderEmail = process.env.GMAIL_USER;
+    if (!process.env.GMAIL_OAUTH_CLIENT_ID || !process.env.GMAIL_OAUTH_CLIENT_SECRET || !process.env.GMAIL_OAUTH_REFRESH_TOKEN || !senderEmail) {
+        throw new Error('Credenciales OAuth de Gmail no configuradas en el servidor.');
+    }
+
+    const accessToken = await getGmailAccessToken();
+    const raw = buildRawGmailMessage({
+        from: `"Sistema CANTV" <${senderEmail}>`,
+        to: toEmail,
+        subject: 'Código de recuperación de contraseña - Sistema CANTV',
+        html: buildResetEmailHtml(token)
+    });
+
+    const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
         method: 'POST',
         headers: {
-            'accept': 'application/json',
-            'api-key': apiKey,
-            'content-type': 'application/json'
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-            sender: { name: 'Sistema CANTV', email: senderEmail },
-            to: [{ email: toEmail }],
-            subject: 'Código de recuperación de contraseña - Sistema CANTV',
-            htmlContent: buildResetEmailHtml(token)
-        })
+        body: JSON.stringify({ raw })
     });
 
     if (!res.ok) {
         const errBody = await res.text().catch(() => '');
-        throw new Error(`Brevo respondió ${res.status}: ${errBody}`);
+        throw new Error(`Gmail API respondió ${res.status}: ${errBody}`);
     }
 }
 
