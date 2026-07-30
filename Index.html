@@ -789,7 +789,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Estudio guardado y soporte subido al Storage exitosamente.', 'success');
             refreshInBackground();
         } catch (err) {
-            alert("Error crítico: " + err.message);
+            await uiAlert("Error crítico: " + err.message, 'Error');
         } finally {
             unlockAction(btn);
         }
@@ -834,7 +834,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Referencia laboral guardada y soporte subido al Storage.', 'success');
             refreshInBackground();
         } catch (err) {
-            alert("Error crítico: " + err.message);
+            await uiAlert("Error crítico: " + err.message, 'Error');
         } finally {
             unlockAction(btn);
         }
@@ -2009,7 +2009,7 @@ async function submitNewPassword(e) {
             throw new Error(errBody.error || 'Código inválido o error del servidor');
         }
 
-        alert("¡Contraseña actualizada exitosamente! Ya puedes iniciar sesión.");
+        await uiAlert("¡Contraseña actualizada exitosamente! Ya puedes iniciar sesión.", '¡Éxito!');
         navigate('login');
     } catch (ex) {
         console.error(ex);
@@ -3750,7 +3750,8 @@ async function submitSust(e, id) {
     });
 
     if (!res.ok) {
-        return alert("Error al guardar sustanciación.");
+        await uiAlert("Error al guardar sustanciación.", 'Error');
+        return;
     }
 
     // Registrar historial de estado
