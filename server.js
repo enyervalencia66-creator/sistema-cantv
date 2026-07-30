@@ -11,6 +11,9 @@ const BCRYPT_ROUNDS = 10;
 const isBcryptHash = (pw) => typeof pw === 'string' && /^\$2[aby]\$\d{2}\$/.test(pw);
 
 const app = express();
+// Render termina el TLS en su proxy y reenvía la petición como HTTP simple; sin esto,
+// req.protocol siempre daría 'http' y el link del correo de notificación quedaría mal armado.
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(__dirname)); // Serve Index.html statically
@@ -128,7 +131,7 @@ async function sendResetEmail(toEmail, token) {
 
 // Misma plantilla visual que el correo de recuperación, pero para el mensaje libre de una
 // notificación del sistema (nueva incidencia, aprobación, rechazo, asignación, etc.).
-function buildNotificationEmailHtml(message, appUrl) {
+function buildNotificationEmailHtml(message, appUrl, senderName) {
     return `
 <div style="background:#eef2f7;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;">
   <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.08);">
@@ -136,11 +139,13 @@ function buildNotificationEmailHtml(message, appUrl) {
       <span style="color:#ffffff;font-size:26px;font-weight:800;letter-spacing:-1px;font-style:italic;">cantv</span>
     </div>
     <div style="padding:32px;">
-      <h1 style="margin:0 0 12px;font-size:18px;color:#1e293b;">Nueva notificación</h1>
+      <h1 style="margin:0 0 4px;font-size:18px;color:#1e293b;">Nueva notificación</h1>
+      <p style="margin:0 0 16px;font-size:12px;color:#94a3b8;">De parte de: <strong style="color:#475569;">${senderName}</strong></p>
       <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.5;">${message}</p>
       <div style="text-align:center;margin-top:24px;">
         <a href="${appUrl}" style="background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;display:inline-block;">Ir al sistema</a>
       </div>
+      <p style="margin:16px 0 0;font-size:11px;color:#94a3b8;line-height:1.5;text-align:center;">Debes iniciar sesión con tu usuario para ver el detalle.</p>
     </div>
     <div style="background:#ffffff;padding:16px 32px;text-align:center;border-top:1px solid #f1f5f9;">
       <span style="font-size:11px;color:#94a3b8;">© ${new Date().getFullYear()} CANTV — Sistema Relacional de Investigaciones</span>
@@ -149,15 +154,22 @@ function buildNotificationEmailHtml(message, appUrl) {
 </div>`;
 }
 
-// Busca el correo del destinatario de una notificación recién creada y le envía un email.
-// Se llama sin esperar su resultado (fire-and-forget): si Gmail falla, la notificación interna
-// ya quedó guardada y no debe verse afectada por un problema de correo.
-async function notifyByEmail(notifRow, appUrl) {
+// Busca el correo del destinatario y el nombre de quien disparó la acción (el usuario autenticado
+// que hizo la petición) y envía el correo de notificación. Se llama sin esperar su resultado
+// (fire-and-forget): si Gmail falla, la notificación interna ya quedó guardada y no debe verse
+// afectada por un problema de correo.
+async function notifyByEmail(notifRow, appUrl, senderUsername) {
     if (!notifRow || !notifRow.user_id || !notifRow.mensaje) return;
-    const { data: users } = await supabase.from('users').select('email').eq('username', notifRow.user_id).limit(1);
-    const email = users && users[0] && users[0].email;
+    const [{ data: recipients }, { data: senders }] = await Promise.all([
+        supabase.from('users').select('email').eq('username', notifRow.user_id).limit(1),
+        senderUsername
+            ? supabase.from('users').select('nombre').eq('username', senderUsername).limit(1)
+            : Promise.resolve({ data: null })
+    ]);
+    const email = recipients && recipients[0] && recipients[0].email;
     if (!email) return;
-    await sendEmail(email, 'Nueva notificación - Sistema CANTV', buildNotificationEmailHtml(notifRow.mensaje, appUrl));
+    const senderName = (senders && senders[0] && senders[0].nombre) || senderUsername || 'Sistema';
+    await sendEmail(email, 'Nueva notificación - Sistema CANTV', buildNotificationEmailHtml(notifRow.mensaje, appUrl, senderName));
 }
 
 // JWT Middleware (Optional for basic thesis demo, but added for structure)
@@ -360,7 +372,7 @@ app.post('/api/db/:table', authenticate, async (req, res) => {
         // cubre todas las acciones del flujo sin tocar cada punto donde se generan.
         if (req.params.table === 'notificaciones' && data && data[0]) {
             const appUrl = `${req.protocol}://${req.get('host')}`;
-            notifyByEmail(data[0], appUrl).catch(e => console.error('notifyByEmail ERROR:', e));
+            notifyByEmail(data[0], appUrl, req.user && req.user.username).catch(e => console.error('notifyByEmail ERROR:', e));
         }
 
         res.json({ success: true, data: req.params.table === 'users' ? stripPassword(data) : data });
