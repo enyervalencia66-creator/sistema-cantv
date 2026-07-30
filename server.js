@@ -91,7 +91,9 @@ function buildRawGmailMessage({ from, to, subject, html }) {
     return Buffer.from(message).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-async function sendResetEmail(toEmail, token) {
+// Función genérica de envío: tanto el correo de recuperación como las notificaciones de
+// acciones del sistema pasan por aquí, solo cambia el asunto y el HTML.
+async function sendEmail(toEmail, subject, html) {
     const senderEmail = process.env.GMAIL_USER;
     if (!process.env.GMAIL_OAUTH_CLIENT_ID || !process.env.GMAIL_OAUTH_CLIENT_SECRET || !process.env.GMAIL_OAUTH_REFRESH_TOKEN || !senderEmail) {
         throw new Error('Credenciales OAuth de Gmail no configuradas en el servidor.');
@@ -101,8 +103,8 @@ async function sendResetEmail(toEmail, token) {
     const raw = buildRawGmailMessage({
         from: `"Sistema CANTV" <${senderEmail}>`,
         to: toEmail,
-        subject: 'Código de recuperación de contraseña - Sistema CANTV',
-        html: buildResetEmailHtml(token)
+        subject,
+        html
     });
 
     const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
@@ -118,6 +120,44 @@ async function sendResetEmail(toEmail, token) {
         const errBody = await res.text().catch(() => '');
         throw new Error(`Gmail API respondió ${res.status}: ${errBody}`);
     }
+}
+
+async function sendResetEmail(toEmail, token) {
+    await sendEmail(toEmail, 'Código de recuperación de contraseña - Sistema CANTV', buildResetEmailHtml(token));
+}
+
+// Misma plantilla visual que el correo de recuperación, pero para el mensaje libre de una
+// notificación del sistema (nueva incidencia, aprobación, rechazo, asignación, etc.).
+function buildNotificationEmailHtml(message, appUrl) {
+    return `
+<div style="background:#eef2f7;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;">
+  <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.08);">
+    <div style="background:linear-gradient(90deg,#2563eb,#E5007E);padding:28px 32px;text-align:center;">
+      <span style="color:#ffffff;font-size:26px;font-weight:800;letter-spacing:-1px;font-style:italic;">cantv</span>
+    </div>
+    <div style="padding:32px;">
+      <h1 style="margin:0 0 12px;font-size:18px;color:#1e293b;">Nueva notificación</h1>
+      <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.5;">${message}</p>
+      <div style="text-align:center;margin-top:24px;">
+        <a href="${appUrl}" style="background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;display:inline-block;">Ir al sistema</a>
+      </div>
+    </div>
+    <div style="background:#ffffff;padding:16px 32px;text-align:center;border-top:1px solid #f1f5f9;">
+      <span style="font-size:11px;color:#94a3b8;">© ${new Date().getFullYear()} CANTV — Sistema Relacional de Investigaciones</span>
+    </div>
+  </div>
+</div>`;
+}
+
+// Busca el correo del destinatario de una notificación recién creada y le envía un email.
+// Se llama sin esperar su resultado (fire-and-forget): si Gmail falla, la notificación interna
+// ya quedó guardada y no debe verse afectada por un problema de correo.
+async function notifyByEmail(notifRow, appUrl) {
+    if (!notifRow || !notifRow.user_id || !notifRow.mensaje) return;
+    const { data: users } = await supabase.from('users').select('email').eq('username', notifRow.user_id).limit(1);
+    const email = users && users[0] && users[0].email;
+    if (!email) return;
+    await sendEmail(email, 'Nueva notificación - Sistema CANTV', buildNotificationEmailHtml(notifRow.mensaje, appUrl));
 }
 
 // JWT Middleware (Optional for basic thesis demo, but added for structure)
@@ -314,6 +354,15 @@ app.post('/api/db/:table', authenticate, async (req, res) => {
 
         if (error) throw error;
         await prefetchData();
+
+        // Cada notificación interna (nueva incidencia, aprobación, rechazo, asignación, cierre...)
+        // pasa por esta tabla vía notifyUser() en el frontend, así que enganchar el correo aquí
+        // cubre todas las acciones del flujo sin tocar cada punto donde se generan.
+        if (req.params.table === 'notificaciones' && data && data[0]) {
+            const appUrl = `${req.protocol}://${req.get('host')}`;
+            notifyByEmail(data[0], appUrl).catch(e => console.error('notifyByEmail ERROR:', e));
+        }
+
         res.json({ success: true, data: req.params.table === 'users' ? stripPassword(data) : data });
     } catch (e) {
         console.error(`POST /api/db/${req.params.table} ERROR:`, e);
