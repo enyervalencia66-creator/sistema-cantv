@@ -594,73 +594,177 @@ async function uploadToSupabase(base64Str, fileName) {
 const REPORTE_MENSUAL_TIPO = 'reporte_mensual';
 
 // --- Estilo compartido para todos los PDF generados por el sistema (reportes, casos, incidencias) ---
+// Deliberadamente distinto del tema oscuro/azul de la interfaz web: es un membrete de documento
+// formal (fondo claro, logo, regla de color, tipografía serif para el cuerpo) en vez de una réplica
+// de las tarjetas y badges de la app.
 const PDF_BRAND_DARK = '#0f172a';
 const PDF_BRAND_BLUE = '#2563eb';
 const PDF_TEXT = '#1e293b';
 const PDF_MUTED = '#64748b';
+const PDF_MARGIN = 50;
+const LOGO_DARK_PATH = path.join(__dirname, 'assets', 'cantv_logo_dark.png');
 
-// Banda de cabecera oscura con el título del documento y una línea de acento azul debajo.
-function pdfHeader(doc, titulo, subtitulo) {
-    const pageWidth = doc.page.width;
-    doc.rect(0, 0, pageWidth, 92).fill(PDF_BRAND_DARK);
-    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(19).text(titulo, 50, 26, { width: pageWidth - 100 });
-    doc.font('Helvetica').fontSize(9).fillColor('#93c5fd').text(subtitulo, 50, 56, { width: pageWidth - 100 });
-    doc.rect(0, 92, pageWidth, 4).fill(PDF_BRAND_BLUE);
-    doc.fillColor(PDF_TEXT);
-    doc.x = 50;
-    doc.y = 116;
+// Deriva un nombre de archivo legible a partir de la URL de Supabase Storage (mismo criterio que
+// renderFileBadge en el cliente: quita query string, decodifica y descarta el prefijo numérico).
+function nombreDesdeUrl(url) {
+    try {
+        const limpio = String(url).split('?')[0];
+        const ultimo = decodeURIComponent(limpio.split('/').pop() || '');
+        return ultimo.replace(/^\d+_/, '') || String(url);
+    } catch (e) {
+        return String(url);
+    }
 }
 
-// Pie de página con marca de confidencialidad y numeración, aplicado a todas las páginas del documento.
+// Membrete: logo CANTV + rótulo institucional/fecha a la derecha, regla de acento azul, título
+// del documento con su etiqueta de categoría (eyebrow) y una línea de subtítulo.
+function pdfHeader(doc, eyebrow, titulo, subtitulo) {
+    const pageWidth = doc.page.width;
+    const contentWidth = pageWidth - PDF_MARGIN * 2;
+
+    try { doc.image(LOGO_DARK_PATH, PDF_MARGIN, 32, { height: 22 }); } catch (e) { /* si el asset no está disponible, se omite sin romper el PDF */ }
+
+    doc.font('Helvetica-Bold').fontSize(7.5).fillColor(PDF_MUTED)
+        .text('SISTEMA DE INVESTIGACIONES RELACIONALES', PDF_MARGIN, 34, { width: contentWidth, align: 'right', characterSpacing: 0.4 });
+    doc.font('Helvetica').fontSize(7.5).fillColor(PDF_MUTED)
+        .text(`Generado el ${new Date().toLocaleString('es-VE')}`, PDF_MARGIN, 45, { width: contentWidth, align: 'right' });
+
+    doc.moveTo(PDF_MARGIN, 68).lineTo(pageWidth - PDF_MARGIN, 68).lineWidth(1.4).strokeColor(PDF_BRAND_BLUE).stroke();
+
+    doc.font('Helvetica-Bold').fontSize(8).fillColor(PDF_BRAND_BLUE).text(eyebrow.toUpperCase(), PDF_MARGIN, 80, { characterSpacing: 1.2 });
+    doc.font('Helvetica-Bold').fontSize(19).fillColor(PDF_BRAND_DARK).text(titulo, PDF_MARGIN, doc.y + 2, { width: contentWidth });
+    doc.font('Helvetica-Oblique').fontSize(9.5).fillColor(PDF_MUTED).text(subtitulo, PDF_MARGIN, doc.y + 2, { width: contentWidth });
+
+    doc.moveDown(0.7);
+    doc.moveTo(PDF_MARGIN, doc.y).lineTo(pageWidth - PDF_MARGIN, doc.y).lineWidth(0.6).strokeColor('#e2e8f0').stroke();
+    doc.moveDown(0.9);
+    doc.fillColor(PDF_TEXT);
+    doc.x = PDF_MARGIN;
+}
+
+// Pie de página institucional (regla fina + confidencialidad + numeración), en todas las páginas.
 function pdfFooter(doc) {
     const range = doc.bufferedPageRange();
     for (let i = range.start; i < range.start + range.count; i++) {
         doc.switchToPage(i);
-        const bottom = doc.page.height - 42;
-        doc.font('Helvetica').fontSize(7.5).fillColor('#94a3b8')
-            .text('Documento generado por el Sistema de Investigaciones Relacionales CANTV — Uso Confidencial', 50, bottom, { width: doc.page.width - 100, align: 'center' })
-            .text(`Página ${i - range.start + 1} de ${range.count}`, 50, bottom + 11, { width: doc.page.width - 100, align: 'center' });
+        // El texto del pie se dibuja dentro del margen inferior del documento; sin este truco,
+        // pdfkit interpreta que el contenido se sale de la página y agrega automáticamente una
+        // página en blanco extra detrás de cada página real.
+        const originalBottomMargin = doc.page.margins.bottom;
+        doc.page.margins.bottom = 0;
+
+        const bottom = doc.page.height - 46;
+        doc.moveTo(PDF_MARGIN, bottom).lineTo(doc.page.width - PDF_MARGIN, bottom).lineWidth(0.6).strokeColor('#e2e8f0').stroke();
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor(PDF_MUTED)
+            .text('CANTV', PDF_MARGIN, bottom + 8, { width: 100, characterSpacing: 0.6, lineBreak: false });
+        doc.font('Helvetica').fontSize(7.5).fillColor(PDF_MUTED)
+            .text('Sistema de Investigaciones Relacionales — Documento de uso confidencial', PDF_MARGIN, bottom + 8, { width: doc.page.width - PDF_MARGIN * 2, align: 'center', lineBreak: false });
+        doc.text(`Página ${i - range.start + 1} de ${range.count}`, doc.page.width - PDF_MARGIN - 120, bottom + 8, { width: 120, align: 'right', lineBreak: false });
+
+        doc.page.margins.bottom = originalBottomMargin;
     }
 }
 
-// Título de sección con subrayado de acento; salta de página si ya no queda espacio razonable.
+// Título de sección tipo "ficha": barra de acento a la izquierda + etiqueta en versalitas.
 function pdfSectionTitle(doc, text) {
     if (doc.y > doc.page.height - 130) doc.addPage();
-    doc.moveDown(0.7);
-    doc.font('Helvetica-Bold').fontSize(12).fillColor(PDF_BRAND_DARK).text(text);
-    const lineY = doc.y + 2;
-    doc.moveTo(50, lineY).lineTo(doc.page.width - 50, lineY).strokeColor(PDF_BRAND_BLUE).lineWidth(1.25).stroke();
-    doc.moveDown(0.6);
+    doc.moveDown(0.9);
+    const y = doc.y;
+    doc.rect(PDF_MARGIN, y + 1, 3, 12).fill(PDF_BRAND_BLUE);
+    doc.font('Helvetica-Bold').fontSize(10.5).fillColor(PDF_BRAND_DARK).text(text.toUpperCase(), PDF_MARGIN + 11, y, { characterSpacing: 0.6 });
+    doc.moveDown(0.5);
     doc.fillColor(PDF_TEXT);
+    doc.x = PDF_MARGIN;
 }
 
-// Grilla de pares etiqueta/valor, dos columnas por fila (para datos generales tipo "Estado", "Fecha", etc.)
-function pdfKeyValueGrid(doc, pairs) {
-    const colWidth = (doc.page.width - 100) / 2;
-    const clean = pairs.filter(Boolean);
-    for (let i = 0; i < clean.length; i += 2) {
+// Tabla de datos generales de una sola columna etiqueta/valor (look de formulario/ficha impresa,
+// en vez de las tarjetas sin borde que usa la interfaz web).
+function pdfDataTable(doc, pairs) {
+    const contentWidth = doc.page.width - PDF_MARGIN * 2;
+    const labelWidth = contentWidth * 0.36;
+    const rowHeight = 21;
+    const clean = pairs.filter(p => p && p[1] !== undefined && p[1] !== null && p[1] !== '');
+
+    clean.forEach(([label, value]) => {
         if (doc.y > doc.page.height - 90) doc.addPage();
-        const rowY = doc.y;
-        [clean[i], clean[i + 1]].forEach((pair, idx) => {
-            if (!pair) return;
-            const x = 50 + idx * colWidth;
-            doc.font('Helvetica').fontSize(8).fillColor(PDF_MUTED).text(String(pair[0]).toUpperCase(), x, rowY, { width: colWidth - 15 });
-            doc.font('Helvetica-Bold').fontSize(10.5).fillColor(PDF_TEXT).text(String(pair[1] ?? '—'), x, rowY + 12, { width: colWidth - 15 });
-        });
-        doc.y = rowY + 36;
-    }
-    doc.x = 50;
+        const y = doc.y;
+        doc.rect(PDF_MARGIN, y, labelWidth, rowHeight).fill('#f1f5f9');
+        doc.rect(PDF_MARGIN + labelWidth, y, contentWidth - labelWidth, rowHeight).fill('#ffffff');
+        doc.rect(PDF_MARGIN, y, contentWidth, rowHeight).lineWidth(0.6).strokeColor('#cbd5e1').stroke();
+        doc.moveTo(PDF_MARGIN + labelWidth, y).lineTo(PDF_MARGIN + labelWidth, y + rowHeight).lineWidth(0.6).strokeColor('#cbd5e1').stroke();
+        doc.font('Helvetica-Bold').fontSize(8).fillColor(PDF_MUTED).text(String(label).toUpperCase(), PDF_MARGIN + 8, y + 6, { width: labelWidth - 16, characterSpacing: 0.3 });
+        doc.font('Helvetica').fontSize(9.5).fillColor(PDF_TEXT).text(String(value), PDF_MARGIN + labelWidth + 8, y + 5.5, { width: contentWidth - labelWidth - 16 });
+        doc.y = y + rowHeight;
+    });
+    doc.moveDown(0.6);
+    doc.x = PDF_MARGIN;
 }
 
-// Párrafo de cuerpo estándar, con salto de página automático si no queda espacio.
+// Párrafo de cuerpo en serif (Times), para distinguir visualmente el contenido narrativo
+// (asunto, plan de trabajo, sustanciación) de las etiquetas/tablas en sans-serif.
 function pdfParagraph(doc, text, opts = {}) {
     if (doc.y > doc.page.height - 100) doc.addPage();
-    doc.font('Helvetica').fontSize(10).fillColor(PDF_TEXT).text(text || '—', 50, doc.y, { width: doc.page.width - 100, lineGap: 3, ...opts });
-    doc.moveDown(0.5);
+    doc.font('Times-Roman').fontSize(10.5).fillColor(PDF_TEXT)
+        .text(text || '—', PDF_MARGIN, doc.y, { width: doc.page.width - PDF_MARGIN * 2, lineGap: 4, align: 'justify', ...opts });
+    doc.moveDown(0.6);
 }
 
-// Arma el PDF del reporte (tabla de KPIs) y devuelve el buffer ya generado.
-// `subtitulo` es la línea bajo la fecha (ej. "Generado automáticamente..." o "Generado por: Fulano").
+// Tabla de personas involucradas (nombre / cédula / grado de implicación opcional), con
+// encabezado oscuro — mismo criterio visual que pdfDataTable para que todo el documento luzca
+// como una ficha impresa consistente.
+function pdfPeopleTable(doc, personas, showGrado) {
+    if (!personas.length) return pdfParagraph(doc, 'No hay personas vinculadas.');
+    const contentWidth = doc.page.width - PDF_MARGIN * 2;
+    const colCedula = contentWidth * 0.22;
+    const colGrado = showGrado ? contentWidth * 0.28 : 0;
+    const colNombre = contentWidth - colCedula - colGrado;
+    const rowHeight = 20;
+
+    const drawHeaderRow = (y) => {
+        doc.rect(PDF_MARGIN, y, contentWidth, rowHeight).fill(PDF_BRAND_DARK);
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#ffffff')
+            .text('NOMBRE', PDF_MARGIN + 8, y + 6.5, { width: colNombre - 16, characterSpacing: 0.4 })
+            .text('CÉDULA', PDF_MARGIN + colNombre + 8, y + 6.5, { width: colCedula - 16, characterSpacing: 0.4 });
+        if (showGrado) doc.text('GRADO DE IMPLICACIÓN', PDF_MARGIN + colNombre + colCedula + 8, y + 6.5, { width: colGrado - 16, characterSpacing: 0.4 });
+        return y + rowHeight;
+    };
+
+    if (doc.y > doc.page.height - 110) doc.addPage();
+    let y = drawHeaderRow(doc.y);
+
+    personas.forEach((p, i) => {
+        if (y > doc.page.height - 90) { doc.addPage(); y = drawHeaderRow(50); }
+        doc.rect(PDF_MARGIN, y, contentWidth, rowHeight).fill(i % 2 === 0 ? '#f8fafc' : '#ffffff');
+        doc.rect(PDF_MARGIN, y, contentWidth, rowHeight).lineWidth(0.5).strokeColor('#e2e8f0').stroke();
+        doc.font('Helvetica').fontSize(9).fillColor(PDF_TEXT)
+            .text(p.nombre || p.cedula || '—', PDF_MARGIN + 8, y + 5.5, { width: colNombre - 16 })
+            .text(p.cedula || '—', PDF_MARGIN + colNombre + 8, y + 5.5, { width: colCedula - 16 });
+        if (showGrado) doc.text(p.grado || 'No Definido', PDF_MARGIN + colNombre + colCedula + 8, y + 5.5, { width: colGrado - 16 });
+        y += rowHeight;
+    });
+
+    doc.y = y + 10;
+    doc.x = PDF_MARGIN;
+}
+
+// Lista de enlaces a documentos adjuntos: texto en azul y subrayado, con `link` de PDF hacia la
+// URL real de Supabase Storage (se abren en el navegador; no van embebidos como archivo descargable
+// dentro del propio PDF).
+function pdfLinkList(doc, items) {
+    const clean = items.filter(it => it && it.url);
+    if (!clean.length) return pdfParagraph(doc, 'Sin documentos adjuntos.');
+    clean.forEach(it => {
+        if (doc.y > doc.page.height - 90) doc.addPage();
+        doc.font('Helvetica-Bold').fontSize(9).fillColor(PDF_MUTED).text(`•  ${it.label}:  `, PDF_MARGIN, doc.y, { continued: true, width: doc.page.width - PDF_MARGIN * 2 });
+        doc.font('Helvetica').fontSize(9).fillColor(PDF_BRAND_BLUE)
+            .text(nombreDesdeUrl(it.url), { link: it.url, underline: true });
+    });
+    doc.moveDown(0.5);
+    doc.x = PDF_MARGIN;
+}
+
+// Arma el PDF del reporte mensual (tabla de KPIs) y devuelve el buffer ya generado.
+// `subtitulo` es la línea bajo el título (ej. "Generado automáticamente..." o "Generado por: Fulano").
 function buildReportePdf(titulo, fechaGeneracion, subtitulo, { total, tasaCierre, avgDays, cumplimiento }) {
     return new Promise((resolve, reject) => {
         const doc = new PDFDocument({ size: 'LETTER', margin: 50, bufferPages: true });
@@ -669,29 +773,15 @@ function buildReportePdf(titulo, fechaGeneracion, subtitulo, { total, tasaCierre
         doc.on('end', () => resolve(Buffer.concat(chunks)));
         doc.on('error', reject);
 
-        pdfHeader(doc, titulo, `Generado el ${fechaGeneracion} — ${subtitulo}`);
+        pdfHeader(doc, 'Reporte de Gestión', titulo, subtitulo);
 
         pdfSectionTitle(doc, 'Resumen Ejecutivo de Rendimiento');
-
-        const rows = [
+        pdfDataTable(doc, [
             ['Total Casos Procesados', String(total)],
             ['Tasa de Cierre', `${tasaCierre}%`],
             ['Tiempo Promedio de Resolución', `${avgDays} días`],
             ['% Cumplimiento a Tiempo', `${cumplimiento}%`]
-        ];
-        const startX = doc.x;
-        const tableWidth = doc.page.width - 100;
-        const rowHeight = 32;
-        let y = doc.y;
-
-        rows.forEach(([label, value], i) => {
-            doc.rect(startX, y, tableWidth, rowHeight).fill(i % 2 === 0 ? '#f8fafc' : '#ffffff');
-            doc.rect(startX, y, tableWidth, rowHeight).stroke('#e2e8f0');
-            doc.font('Helvetica-Bold').fontSize(11).fillColor(PDF_TEXT).text(label, startX + 14, y + 10, { width: tableWidth * 0.6 });
-            doc.font('Helvetica-Bold').fontSize(11).fillColor(PDF_BRAND_BLUE).text(value, startX + tableWidth * 0.65, y + 10, { width: tableWidth * 0.3 });
-            y += rowHeight;
-        });
-        doc.y = y;
+        ]);
 
         pdfFooter(doc);
         doc.end();
@@ -699,7 +789,7 @@ function buildReportePdf(titulo, fechaGeneracion, subtitulo, { total, tasaCierre
 }
 
 // Arma el PDF de un caso (investigación) completo: datos generales, plan de trabajo, sustanciación,
-// cierre gerencial, personas involucradas e historial de comentarios.
+// cierre gerencial, personas involucradas, documentos adjuntos (como enlaces) e historial de comentarios.
 function buildCasoPdf(c) {
     return new Promise((resolve, reject) => {
         const doc = new PDFDocument({ size: 'LETTER', margin: 50, bufferPages: true });
@@ -710,10 +800,10 @@ function buildCasoPdf(c) {
 
         const fmtFecha = (v) => v ? new Date(v).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
-        pdfHeader(doc, `Caso ${c.id ?? ''}`, `Detalle completo de la investigación — Generado el ${new Date().toLocaleString('es-VE')}`);
+        pdfHeader(doc, 'Expediente de Caso', `Caso ${c.id ?? ''}`, 'Detalle completo de la investigación y su trazabilidad');
 
         pdfSectionTitle(doc, 'Información General');
-        pdfKeyValueGrid(doc, [
+        pdfDataTable(doc, [
             ['Estado', c.estado],
             ['Incidencia de Origen', c.incidenciaOrigen],
             ['Fecha de Apertura', fmtFecha(c.fechaApertura)],
@@ -735,34 +825,32 @@ function buildCasoPdf(c) {
             pdfParagraph(doc, c.sustanciacion.detalle);
         }
 
-        if (c.memoFinal) {
-            pdfSectionTitle(doc, 'Cierre Gerencial');
-            pdfParagraph(doc, 'Este caso fue cerrado con memorándum final adjunto en el sistema.');
-        }
-
         pdfSectionTitle(doc, 'Personas Involucradas');
-        const involucrados = Array.isArray(c.personasInvolucradasDetalle) ? c.personasInvolucradasDetalle : [];
-        if (involucrados.length > 0) {
-            involucrados.forEach(p => {
-                if (doc.y > doc.page.height - 90) doc.addPage();
-                doc.font('Helvetica-Bold').fontSize(10).fillColor(PDF_TEXT).text(`•  ${p.nombre} (${p.cedula})`, 50, doc.y, { continued: true, width: doc.page.width - 100 });
-                doc.font('Helvetica').fontSize(9.5).fillColor(PDF_MUTED).text(`   —  ${p.grado || 'No Definido'}`);
-            });
-            doc.moveDown(0.4);
-        } else {
-            pdfParagraph(doc, 'No hay personas vinculadas a este caso.');
-        }
+        pdfPeopleTable(doc, Array.isArray(c.personasInvolucradasDetalle) ? c.personasInvolucradasDetalle : [], true);
+
+        pdfSectionTitle(doc, 'Documentos Adjuntos');
+        pdfLinkList(doc, [
+            c.sustanciacion?.xls && { label: 'Sustanciación — Documento 1', url: c.sustanciacion.xls },
+            c.sustanciacion?.ppt && { label: 'Sustanciación — Documento 2', url: c.sustanciacion.ppt },
+            c.memoFinal && { label: 'Memorándum de Cierre', url: c.memoFinal }
+        ].filter(Boolean));
 
         pdfSectionTitle(doc, 'Historial de Comentarios');
         const mensajes = Array.isArray(c.historialMensajes) ? c.historialMensajes : [];
         if (mensajes.length > 0) {
-            mensajes.forEach(m => {
-                if (doc.y > doc.page.height - 100) doc.addPage();
-                doc.font('Helvetica-Bold').fontSize(9).fillColor(PDF_BRAND_BLUE).text(m.autor || '—', 50, doc.y, { continued: true });
-                doc.font('Helvetica').fontSize(8).fillColor(PDF_MUTED).text(`   ${m.fecha || ''}`);
-                doc.font('Helvetica').fontSize(9.5).fillColor(PDF_TEXT).text(m.texto || '', 50, doc.y, { width: doc.page.width - 100, lineGap: 2 });
-                doc.moveDown(0.4);
+            mensajes.forEach((m, idx) => {
+                if (doc.y > doc.page.height - 110) doc.addPage();
+                const y = doc.y;
+                doc.font('Helvetica-Bold').fontSize(8).fillColor(PDF_BRAND_BLUE).text(String(idx + 1).padStart(2, '0'), PDF_MARGIN, y, { width: 22 });
+                doc.font('Helvetica-Bold').fontSize(8).fillColor(PDF_MUTED)
+                    .text(`${(m.autor || '—').toUpperCase()}   ·   ${m.fecha || ''}`, PDF_MARGIN + 24, y, { width: doc.page.width - PDF_MARGIN * 2 - 24, characterSpacing: 0.3 });
+                doc.font('Times-Italic').fontSize(10).fillColor(PDF_TEXT)
+                    .text(m.texto || '', PDF_MARGIN + 24, y + 13, { width: doc.page.width - PDF_MARGIN * 2 - 24, lineGap: 2 });
+                doc.moveDown(0.55);
+                doc.moveTo(PDF_MARGIN, doc.y).lineTo(doc.page.width - PDF_MARGIN, doc.y).lineWidth(0.4).strokeColor('#e2e8f0').stroke();
+                doc.moveDown(0.5);
             });
+            doc.x = PDF_MARGIN;
         } else {
             pdfParagraph(doc, 'Sin comentarios registrados.');
         }
@@ -772,8 +860,8 @@ function buildCasoPdf(c) {
     });
 }
 
-// Arma el PDF de una incidencia (solicitud): datos generales, asunto, personas involucradas
-// y el historial de observaciones de aprobación/rechazo gerencial.
+// Arma el PDF de una incidencia (solicitud): datos generales, asunto, personas involucradas,
+// documentos adjuntos (como enlaces) y el historial de observaciones de aprobación/rechazo gerencial.
 function buildIncidenciaPdf(s) {
     return new Promise((resolve, reject) => {
         const doc = new PDFDocument({ size: 'LETTER', margin: 50, bufferPages: true });
@@ -784,10 +872,10 @@ function buildIncidenciaPdf(s) {
 
         const fmtFecha = (v) => v ? new Date(v).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
-        pdfHeader(doc, `Incidencia ${s.id ?? ''}`, `Proceso de validación gerencial — Generado el ${new Date().toLocaleString('es-VE')}`);
+        pdfHeader(doc, 'Expediente de Incidencia', `Incidencia ${s.id ?? ''}`, 'Proceso de validación gerencial');
 
         pdfSectionTitle(doc, 'Información General');
-        pdfKeyValueGrid(doc, [
+        pdfDataTable(doc, [
             ['Estado', s.estado],
             ['Criticidad', s.criticidad],
             ['Enviado por', s.creadoPorNombre || s.creadoPor],
@@ -799,26 +887,29 @@ function buildIncidenciaPdf(s) {
         pdfParagraph(doc, s.asunto);
 
         pdfSectionTitle(doc, 'Personas Involucradas');
-        const involucrados = Array.isArray(s.personasInvolucradasDetalle) ? s.personasInvolucradasDetalle : [];
-        if (involucrados.length > 0) {
-            involucrados.forEach(p => {
-                if (doc.y > doc.page.height - 90) doc.addPage();
-                doc.font('Helvetica-Bold').fontSize(10).fillColor(PDF_TEXT).text(`•  ${p.nombre} (${p.cedula})`);
-            });
-            doc.moveDown(0.4);
-        } else {
-            pdfParagraph(doc, 'No hay personas vinculadas a esta incidencia.');
-        }
+        pdfPeopleTable(doc, Array.isArray(s.personasInvolucradasDetalle) ? s.personasInvolucradasDetalle : [], false);
+
+        pdfSectionTitle(doc, 'Documentos Adjuntos');
+        pdfLinkList(doc, [
+            s.adjuntos?.xls && { label: 'Documento Soporte 1', url: s.adjuntos.xls },
+            s.adjuntos?.ppt && { label: 'Documento Soporte 2', url: s.adjuntos.ppt }
+        ].filter(Boolean));
 
         const observaciones = Array.isArray(s.observaciones) ? s.observaciones : [];
         if (observaciones.length > 0) {
             pdfSectionTitle(doc, 'Historial de Observaciones');
-            observaciones.forEach(o => {
+            observaciones.forEach((o, idx) => {
                 if (doc.y > doc.page.height - 100) doc.addPage();
-                doc.font('Helvetica-Bold').fontSize(9).fillColor(PDF_BRAND_BLUE).text(o.autor || '—');
-                doc.font('Helvetica').fontSize(9.5).fillColor(PDF_TEXT).text(o.texto || '', 50, doc.y, { width: doc.page.width - 100, lineGap: 2 });
-                doc.moveDown(0.4);
+                const y = doc.y;
+                doc.font('Helvetica-Bold').fontSize(8).fillColor(PDF_BRAND_BLUE).text(String(idx + 1).padStart(2, '0'), PDF_MARGIN, y, { width: 22 });
+                doc.font('Helvetica-Bold').fontSize(8).fillColor(PDF_MUTED).text((o.autor || '—').toUpperCase(), PDF_MARGIN + 24, y, { width: doc.page.width - PDF_MARGIN * 2 - 24, characterSpacing: 0.3 });
+                doc.font('Times-Italic').fontSize(10).fillColor(PDF_TEXT)
+                    .text(o.texto || '', PDF_MARGIN + 24, y + 13, { width: doc.page.width - PDF_MARGIN * 2 - 24, lineGap: 2 });
+                doc.moveDown(0.55);
+                doc.moveTo(PDF_MARGIN, doc.y).lineTo(doc.page.width - PDF_MARGIN, doc.y).lineWidth(0.4).strokeColor('#e2e8f0').stroke();
+                doc.moveDown(0.5);
             });
+            doc.x = PDF_MARGIN;
         }
 
         pdfFooter(doc);
