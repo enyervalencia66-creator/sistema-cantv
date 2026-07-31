@@ -593,25 +593,85 @@ async function uploadToSupabase(base64Str, fileName) {
 // visible para Gerencia en la vista "Reportes Mensuales".
 const REPORTE_MENSUAL_TIPO = 'reporte_mensual';
 
+// --- Estilo compartido para todos los PDF generados por el sistema (reportes, casos, incidencias) ---
+const PDF_BRAND_DARK = '#0f172a';
+const PDF_BRAND_BLUE = '#2563eb';
+const PDF_TEXT = '#1e293b';
+const PDF_MUTED = '#64748b';
+
+// Banda de cabecera oscura con el título del documento y una línea de acento azul debajo.
+function pdfHeader(doc, titulo, subtitulo) {
+    const pageWidth = doc.page.width;
+    doc.rect(0, 0, pageWidth, 92).fill(PDF_BRAND_DARK);
+    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(19).text(titulo, 50, 26, { width: pageWidth - 100 });
+    doc.font('Helvetica').fontSize(9).fillColor('#93c5fd').text(subtitulo, 50, 56, { width: pageWidth - 100 });
+    doc.rect(0, 92, pageWidth, 4).fill(PDF_BRAND_BLUE);
+    doc.fillColor(PDF_TEXT);
+    doc.x = 50;
+    doc.y = 116;
+}
+
+// Pie de página con marca de confidencialidad y numeración, aplicado a todas las páginas del documento.
+function pdfFooter(doc) {
+    const range = doc.bufferedPageRange();
+    for (let i = range.start; i < range.start + range.count; i++) {
+        doc.switchToPage(i);
+        const bottom = doc.page.height - 42;
+        doc.font('Helvetica').fontSize(7.5).fillColor('#94a3b8')
+            .text('Documento generado por el Sistema de Investigaciones Relacionales CANTV — Uso Confidencial', 50, bottom, { width: doc.page.width - 100, align: 'center' })
+            .text(`Página ${i - range.start + 1} de ${range.count}`, 50, bottom + 11, { width: doc.page.width - 100, align: 'center' });
+    }
+}
+
+// Título de sección con subrayado de acento; salta de página si ya no queda espacio razonable.
+function pdfSectionTitle(doc, text) {
+    if (doc.y > doc.page.height - 130) doc.addPage();
+    doc.moveDown(0.7);
+    doc.font('Helvetica-Bold').fontSize(12).fillColor(PDF_BRAND_DARK).text(text);
+    const lineY = doc.y + 2;
+    doc.moveTo(50, lineY).lineTo(doc.page.width - 50, lineY).strokeColor(PDF_BRAND_BLUE).lineWidth(1.25).stroke();
+    doc.moveDown(0.6);
+    doc.fillColor(PDF_TEXT);
+}
+
+// Grilla de pares etiqueta/valor, dos columnas por fila (para datos generales tipo "Estado", "Fecha", etc.)
+function pdfKeyValueGrid(doc, pairs) {
+    const colWidth = (doc.page.width - 100) / 2;
+    const clean = pairs.filter(Boolean);
+    for (let i = 0; i < clean.length; i += 2) {
+        if (doc.y > doc.page.height - 90) doc.addPage();
+        const rowY = doc.y;
+        [clean[i], clean[i + 1]].forEach((pair, idx) => {
+            if (!pair) return;
+            const x = 50 + idx * colWidth;
+            doc.font('Helvetica').fontSize(8).fillColor(PDF_MUTED).text(String(pair[0]).toUpperCase(), x, rowY, { width: colWidth - 15 });
+            doc.font('Helvetica-Bold').fontSize(10.5).fillColor(PDF_TEXT).text(String(pair[1] ?? '—'), x, rowY + 12, { width: colWidth - 15 });
+        });
+        doc.y = rowY + 36;
+    }
+    doc.x = 50;
+}
+
+// Párrafo de cuerpo estándar, con salto de página automático si no queda espacio.
+function pdfParagraph(doc, text, opts = {}) {
+    if (doc.y > doc.page.height - 100) doc.addPage();
+    doc.font('Helvetica').fontSize(10).fillColor(PDF_TEXT).text(text || '—', 50, doc.y, { width: doc.page.width - 100, lineGap: 3, ...opts });
+    doc.moveDown(0.5);
+}
+
 // Arma el PDF del reporte (tabla de KPIs) y devuelve el buffer ya generado.
 // `subtitulo` es la línea bajo la fecha (ej. "Generado automáticamente..." o "Generado por: Fulano").
 function buildReportePdf(titulo, fechaGeneracion, subtitulo, { total, tasaCierre, avgDays, cumplimiento }) {
     return new Promise((resolve, reject) => {
-        const doc = new PDFDocument({ size: 'LETTER', margin: 50 });
+        const doc = new PDFDocument({ size: 'LETTER', margin: 50, bufferPages: true });
         const chunks = [];
         doc.on('data', (chunk) => chunks.push(chunk));
         doc.on('end', () => resolve(Buffer.concat(chunks)));
         doc.on('error', reject);
 
-        doc.font('Helvetica-Bold').fontSize(20).fillColor('#111').text(titulo);
-        doc.moveDown(0.5);
-        doc.font('Helvetica').fontSize(10).fillColor('#555')
-            .text(`Fecha de Generación: ${fechaGeneracion}`)
-            .text(subtitulo);
-        doc.moveDown(1.5);
+        pdfHeader(doc, titulo, `Generado el ${fechaGeneracion} — ${subtitulo}`);
 
-        doc.font('Helvetica-Bold').fontSize(13).fillColor('#111').text('Resumen Ejecutivo de Rendimiento');
-        doc.moveDown(0.75);
+        pdfSectionTitle(doc, 'Resumen Ejecutivo de Rendimiento');
 
         const rows = [
             ['Total Casos Procesados', String(total)],
@@ -620,21 +680,148 @@ function buildReportePdf(titulo, fechaGeneracion, subtitulo, { total, tasaCierre
             ['% Cumplimiento a Tiempo', `${cumplimiento}%`]
         ];
         const startX = doc.x;
-        const tableWidth = 460;
+        const tableWidth = doc.page.width - 100;
         const rowHeight = 32;
         let y = doc.y;
 
-        rows.forEach(([label, value]) => {
-            doc.rect(startX, y, tableWidth, rowHeight).stroke('#cccccc');
-            doc.font('Helvetica-Bold').fontSize(11).fillColor('#111').text(label, startX + 12, y + 10, { width: tableWidth * 0.6 });
-            doc.font('Helvetica').fontSize(11).fillColor('#111').text(value, startX + tableWidth * 0.65, y + 10, { width: tableWidth * 0.3 });
+        rows.forEach(([label, value], i) => {
+            doc.rect(startX, y, tableWidth, rowHeight).fill(i % 2 === 0 ? '#f8fafc' : '#ffffff');
+            doc.rect(startX, y, tableWidth, rowHeight).stroke('#e2e8f0');
+            doc.font('Helvetica-Bold').fontSize(11).fillColor(PDF_TEXT).text(label, startX + 14, y + 10, { width: tableWidth * 0.6 });
+            doc.font('Helvetica-Bold').fontSize(11).fillColor(PDF_BRAND_BLUE).text(value, startX + tableWidth * 0.65, y + 10, { width: tableWidth * 0.3 });
             y += rowHeight;
         });
+        doc.y = y;
 
-        doc.moveDown(4);
-        doc.font('Helvetica').fontSize(8).fillColor('#888')
-            .text('Documento oficial generado automáticamente por el Sistema de Investigaciones Relacionales CANTV.', { align: 'center' });
+        pdfFooter(doc);
+        doc.end();
+    });
+}
 
+// Arma el PDF de un caso (investigación) completo: datos generales, plan de trabajo, sustanciación,
+// cierre gerencial, personas involucradas e historial de comentarios.
+function buildCasoPdf(c) {
+    return new Promise((resolve, reject) => {
+        const doc = new PDFDocument({ size: 'LETTER', margin: 50, bufferPages: true });
+        const chunks = [];
+        doc.on('data', (chunk) => chunks.push(chunk));
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', reject);
+
+        const fmtFecha = (v) => v ? new Date(v).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+
+        pdfHeader(doc, `Caso ${c.id ?? ''}`, `Detalle completo de la investigación — Generado el ${new Date().toLocaleString('es-VE')}`);
+
+        pdfSectionTitle(doc, 'Información General');
+        pdfKeyValueGrid(doc, [
+            ['Estado', c.estado],
+            ['Incidencia de Origen', c.incidenciaOrigen],
+            ['Fecha de Apertura', fmtFecha(c.fechaApertura)],
+            ['Fecha Límite', fmtFecha(c.fechaLimite)],
+            ['Coordinador', c.coordinadorAsignado],
+            ['Supervisor', c.supervisorAsignado],
+            ['Especialista', c.especialistaAsignado],
+            ['Creado por', c.creadorOriginal]
+        ]);
+
+        pdfSectionTitle(doc, 'Asunto');
+        pdfParagraph(doc, c.asunto);
+
+        pdfSectionTitle(doc, 'Plan de Trabajo');
+        pdfParagraph(doc, c.planTrabajo || 'Aún no ha sido elaborado por el Coordinador.');
+
+        if (c.sustanciacion && c.sustanciacion.detalle) {
+            pdfSectionTitle(doc, 'Sustanciación');
+            pdfParagraph(doc, c.sustanciacion.detalle);
+        }
+
+        if (c.memoFinal) {
+            pdfSectionTitle(doc, 'Cierre Gerencial');
+            pdfParagraph(doc, 'Este caso fue cerrado con memorándum final adjunto en el sistema.');
+        }
+
+        pdfSectionTitle(doc, 'Personas Involucradas');
+        const involucrados = Array.isArray(c.personasInvolucradasDetalle) ? c.personasInvolucradasDetalle : [];
+        if (involucrados.length > 0) {
+            involucrados.forEach(p => {
+                if (doc.y > doc.page.height - 90) doc.addPage();
+                doc.font('Helvetica-Bold').fontSize(10).fillColor(PDF_TEXT).text(`•  ${p.nombre} (${p.cedula})`, 50, doc.y, { continued: true, width: doc.page.width - 100 });
+                doc.font('Helvetica').fontSize(9.5).fillColor(PDF_MUTED).text(`   —  ${p.grado || 'No Definido'}`);
+            });
+            doc.moveDown(0.4);
+        } else {
+            pdfParagraph(doc, 'No hay personas vinculadas a este caso.');
+        }
+
+        pdfSectionTitle(doc, 'Historial de Comentarios');
+        const mensajes = Array.isArray(c.historialMensajes) ? c.historialMensajes : [];
+        if (mensajes.length > 0) {
+            mensajes.forEach(m => {
+                if (doc.y > doc.page.height - 100) doc.addPage();
+                doc.font('Helvetica-Bold').fontSize(9).fillColor(PDF_BRAND_BLUE).text(m.autor || '—', 50, doc.y, { continued: true });
+                doc.font('Helvetica').fontSize(8).fillColor(PDF_MUTED).text(`   ${m.fecha || ''}`);
+                doc.font('Helvetica').fontSize(9.5).fillColor(PDF_TEXT).text(m.texto || '', 50, doc.y, { width: doc.page.width - 100, lineGap: 2 });
+                doc.moveDown(0.4);
+            });
+        } else {
+            pdfParagraph(doc, 'Sin comentarios registrados.');
+        }
+
+        pdfFooter(doc);
+        doc.end();
+    });
+}
+
+// Arma el PDF de una incidencia (solicitud): datos generales, asunto, personas involucradas
+// y el historial de observaciones de aprobación/rechazo gerencial.
+function buildIncidenciaPdf(s) {
+    return new Promise((resolve, reject) => {
+        const doc = new PDFDocument({ size: 'LETTER', margin: 50, bufferPages: true });
+        const chunks = [];
+        doc.on('data', (chunk) => chunks.push(chunk));
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', reject);
+
+        const fmtFecha = (v) => v ? new Date(v).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+
+        pdfHeader(doc, `Incidencia ${s.id ?? ''}`, `Proceso de validación gerencial — Generado el ${new Date().toLocaleString('es-VE')}`);
+
+        pdfSectionTitle(doc, 'Información General');
+        pdfKeyValueGrid(doc, [
+            ['Estado', s.estado],
+            ['Criticidad', s.criticidad],
+            ['Enviado por', s.creadoPorNombre || s.creadoPor],
+            ['Fecha de Creación', fmtFecha(s.creadoEl)],
+            ['Caso Generado', s.casoGenerado ? `Caso ${s.casoGenerado}` : '—']
+        ]);
+
+        pdfSectionTitle(doc, 'Asunto');
+        pdfParagraph(doc, s.asunto);
+
+        pdfSectionTitle(doc, 'Personas Involucradas');
+        const involucrados = Array.isArray(s.personasInvolucradasDetalle) ? s.personasInvolucradasDetalle : [];
+        if (involucrados.length > 0) {
+            involucrados.forEach(p => {
+                if (doc.y > doc.page.height - 90) doc.addPage();
+                doc.font('Helvetica-Bold').fontSize(10).fillColor(PDF_TEXT).text(`•  ${p.nombre} (${p.cedula})`);
+            });
+            doc.moveDown(0.4);
+        } else {
+            pdfParagraph(doc, 'No hay personas vinculadas a esta incidencia.');
+        }
+
+        const observaciones = Array.isArray(s.observaciones) ? s.observaciones : [];
+        if (observaciones.length > 0) {
+            pdfSectionTitle(doc, 'Historial de Observaciones');
+            observaciones.forEach(o => {
+                if (doc.y > doc.page.height - 100) doc.addPage();
+                doc.font('Helvetica-Bold').fontSize(9).fillColor(PDF_BRAND_BLUE).text(o.autor || '—');
+                doc.font('Helvetica').fontSize(9.5).fillColor(PDF_TEXT).text(o.texto || '', 50, doc.y, { width: doc.page.width - 100, lineGap: 2 });
+                doc.moveDown(0.4);
+            });
+        }
+
+        pdfFooter(doc);
         doc.end();
     });
 }
@@ -760,6 +947,33 @@ app.post('/api/reports/pdf', authenticate, async (req, res) => {
         res.send(pdfBuffer);
     } catch (e) {
         console.error('Error generando PDF bajo demanda:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 8. Exportar un Caso a PDF. El cliente ya tiene el caso completamente ensamblado (con nombres
+// de personas y responsables resueltos), así que se lo envía en el body en vez de re-consultarlo.
+app.post('/api/casos/pdf', authenticate, async (req, res) => {
+    try {
+        const pdfBuffer = await buildCasoPdf(req.body || {});
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="Caso_${req.body?.id ?? Date.now()}.pdf"`);
+        res.send(pdfBuffer);
+    } catch (e) {
+        console.error('Error generando PDF de caso:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 9. Exportar una Incidencia (solicitud) a PDF, mismo criterio que el de casos.
+app.post('/api/solicitudes/pdf', authenticate, async (req, res) => {
+    try {
+        const pdfBuffer = await buildIncidenciaPdf(req.body || {});
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="Incidencia_${req.body?.id ?? Date.now()}.pdf"`);
+        res.send(pdfBuffer);
+    } catch (e) {
+        console.error('Error generando PDF de incidencia:', e);
         res.status(500).json({ error: e.message });
     }
 });

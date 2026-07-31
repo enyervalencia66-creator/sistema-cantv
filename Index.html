@@ -736,7 +736,7 @@ function toggleFavItem(type, id) {
     if(item.favoritos.includes(currentUser.username)) item.favoritos = item.favoritos.filter(x => x !== currentUser.username);
     else item.favoritos.push(currentUser.username);
     saveDB();
-    if(type === 'solicitud') navigate('solicitud-detail', {id}); else navigate('caso-detail', {id});
+    if(type === 'solicitud') navigate('solicitud-detail', {id}); else navigate('case-detail', {id});
 }
 
 // --- MODALES DE EDICION (ESTUDIOS/REFERENCIAS) ---
@@ -2199,6 +2199,83 @@ async function descargarReportePdf(e) {
     unlockAction(btn);
 }
 
+// Exporta el detalle completo de un Caso a PDF. Los nombres de personas involucradas se resuelven
+// aquí en el cliente (que ya tiene el directorio de personas cargado) y se envían junto al resto
+// de los datos del caso, para que el servidor no tenga que volver a consultar la base de datos.
+async function exportarCasoPdf(e, id) {
+    const btn = e && e.currentTarget ? e.currentTarget : null;
+    const c = db.casos.find(x => x.id == id);
+    if (!c) return showToast('Caso no encontrado.', 'error');
+    if (!lockAction(btn, 'Generando PDF...')) return;
+
+    try {
+        const personasInvolucradasDetalle = (c.personasInvolucradas || []).map(ced => {
+            const p = db.personas.find(x => x.cedula === ced);
+            return { cedula: ced, nombre: p ? p.nombre : ced, grado: (c.implicaciones && c.implicaciones[ced]) || 'No Definido' };
+        });
+
+        const res = await fetch('/api/casos/pdf', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...c, personasInvolucradasDetalle })
+        });
+        if (!res.ok) throw new Error('El servidor no pudo generar el PDF.');
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Caso_${c.id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    } catch (err) {
+        showToast('Error al generar el PDF: ' + err.message, 'error');
+    }
+
+    unlockAction(btn);
+}
+
+// Exporta el detalle completo de una Incidencia (solicitud) a PDF, mismo criterio que exportarCasoPdf.
+async function exportarIncidenciaPdf(e, id) {
+    const btn = e && e.currentTarget ? e.currentTarget : null;
+    const s = db.solicitudes.find(x => x.id == id);
+    if (!s) return showToast('Incidencia no encontrada.', 'error');
+    if (!lockAction(btn, 'Generando PDF...')) return;
+
+    try {
+        const creador = db.users.find(u => u.username === s.creadoPor);
+        const personasInvolucradasDetalle = (s.personasInvolucradas || []).map(ced => {
+            const p = db.personas.find(x => x.cedula === ced);
+            return { cedula: ced, nombre: p ? p.nombre : ced };
+        });
+
+        const res = await fetch('/api/solicitudes/pdf', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ...s,
+                creadoPorNombre: creador ? `${creador.name} (${creador.role})` : s.creadoPor,
+                personasInvolucradasDetalle
+            })
+        });
+        if (!res.ok) throw new Error('El servidor no pudo generar el PDF.');
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Incidencia_${s.id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    } catch (err) {
+        showToast('Error al generar el PDF: ' + err.message, 'error');
+    }
+
+    unlockAction(btn);
+}
+
 // Repositorio de reportes mensuales, generados automáticamente por el servidor el último día de cada mes
 // y guardados en la tabla 'documents'. Visible solo para Gerencia.
 function renderReportesMensuales() {
@@ -2771,10 +2848,11 @@ function renderSolicitudDetail(id) {
             <button onclick="navigate('solicitudes')" class="btn btn-secondary btn-sm" style="padding:0.4rem 0.8rem">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
             </button>
-            <div>
+            <div class="flex-1">
                 <h1 class="text-3xl font-bold" style="margin:0">Incidencia ${s.id}</h1>
                 <p style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.1rem">Proceso de validación gerencial de incidencia.</p>
             </div>
+            <button class="btn btn-secondary" onclick="exportarIncidenciaPdf(event, '${id}')">📄 Exportar PDF</button>
         </div>
         <div class="glass-card mb-4" style="">
             <div class="detail-grid-3">
@@ -3512,10 +3590,11 @@ function renderCaseDetail(id) {
             <button onclick="navigate('casos')" class="btn btn-secondary case-back-btn" title="Volver">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
             </button>
-            <div>
+            <div class="flex-1">
                 <h1 class="case-title">Caso ${c.id}</h1>
                 <p class="case-subtitle">Detalle completo de la investigación y soportes.</p>
             </div>
+            <button class="btn btn-secondary" onclick="exportarCasoPdf(event, '${id}')">📄 Exportar PDF</button>
         </div>
 
         ${navBarHtml}
@@ -4111,10 +4190,11 @@ function renderExpedienteDetail(cedula) {
             <input type="text" class="input-field search-input" placeholder="Buscar caso..." maxlength="50" onkeyup="filterTable('casosTable', this.value)">
         </div>
         <div class="glass-card p-0"><table id="casosTable" class="table-container m-0">
-            <thead><tr class="table-header"><th>ID Caso</th><th>Asunto</th><th>Grado de Implicación</th><th>Estado del Caso</th></tr></thead><tbody>
+            <thead><tr class="table-header"><th>ID Caso</th><th>Asunto</th><th>Grado de Implicación</th><th>Estado del Caso</th><th class="text-right">Acción</th></tr></thead><tbody>
             ${personCasos.map(c => {
                 const grado = (c.implicaciones && c.implicaciones[p.cedula]) || 'No Definido';
-                return `<tr class="table-row"><td>${c.id}</td><td>${c.asunto}</td><td><span class="text-gradient-fuchsia text-sm font-bold">${grado}</span></td><td><span class="badge badge-low">${c.estado}</span></td></tr>`;
+                return `<tr class="table-row"><td>${c.id}</td><td>${c.asunto}</td><td><span class="text-gradient-fuchsia text-sm font-bold">${grado}</span></td><td><span class="badge badge-low">${c.estado}</span></td>
+                    <td class="text-right"><button class="btn btn-secondary btn-sm" onclick="navigate('case-detail', {id:'${c.id}'})">Ver Caso</button></td></tr>`;
             }).join('')}
             </tbody>
         </table></div>
