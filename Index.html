@@ -2609,13 +2609,37 @@ function readFileAsDataURL(file) {
     });
 }
 
+// Arma la página que muestra una imagen (foto de evidencia) con el clic derecho desalentado: sin
+// esto, el navegador ofrece "Guardar imagen como/Copiar imagen" sobre cualquier <img>. Esto NO es
+// protección real (cualquiera con herramientas de desarrollador o una captura de pantalla igual
+// puede obtener la imagen); solo evita el guardado casual por menú contextual.
+function renderImagenProtegidaHtml(src) {
+    return `<!doctype html><html><head><title>Vista de Documento</title><style>
+        html,body{margin:0;height:100%;background:#000;}
+        .wrap{position:relative;display:flex;justify-content:center;align-items:center;min-height:100vh;}
+        img{max-width:100%;max-height:100vh;-webkit-user-drag:none;user-select:none;pointer-events:none;}
+        .shield{position:absolute;inset:0;}
+    </style></head>
+    <body oncontextmenu="return false">
+        <div class="wrap">
+            <img src="${src}" draggable="false" alt="Documento">
+            <div class="shield" oncontextmenu="return false"></div>
+        </div>
+    </body></html>`;
+}
+
 // Helper: abre un documento almacenado en Supabase Storage (URL pública) directamente en el navegador,
-// sin forzar la descarga. Word/Excel/PowerPoint se visualizan con el visor de Office Online;
-// PDFs e imágenes ya los renderiza el navegador de forma nativa al abrirlos en una pestaña nueva.
+// sin forzar la descarga. Word/Excel/PowerPoint se visualizan con el visor de Office Online; las
+// imágenes se envuelven en una página propia para poder desalentar el clic derecho (ver arriba);
+// el resto (PDFs, etc.) los renderiza el navegador de forma nativa al abrirlos en una pestaña nueva.
 function openStoredFileUrl(url) {
     if (!url) return showToast('Archivo no disponible.', 'error');
     if (/\.(docx?|xlsx?|pptx?)(\?.*)?$/i.test(url)) {
         window.open('https://view.officeapps.live.com/op/view.aspx?src=' + encodeURIComponent(url), '_blank');
+    } else if (/\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/i.test(url)) {
+        const w = window.open();
+        if (w) w.document.write(renderImagenProtegidaHtml(url));
+        else showToast('El navegador bloqueó la ventana emergente.', 'warning');
     } else {
         window.open(url, '_blank');
     }
@@ -2635,10 +2659,12 @@ function previewFile(fileObj) {
     if (!fileObj || !fileObj.data) return showToast('Archivo no disponible.', 'error');
     if (fileObj.type && fileObj.type.startsWith('image/')) {
         const w = window.open();
-        w.document.write(`<style>body{margin:0;background:#000;display:flex;justify-content:center;align-items:center;min-height:100vh}</style><img src="${fileObj.data}" style="max-width:100%;max-height:100vh">`);
+        if (w) w.document.write(renderImagenProtegidaHtml(fileObj.data));
+        else showToast('El navegador bloqueó la ventana emergente.', 'warning');
     } else if (fileObj.type === 'application/pdf') {
         const w = window.open();
-        w.document.write(`<iframe src="${fileObj.data}" style="width:100vw;height:100vh;border:none"></iframe>`);
+        if (w) w.document.write(`<iframe src="${fileObj.data}" style="width:100vw;height:100vh;border:none"></iframe>`);
+        else showToast('El navegador bloqueó la ventana emergente.', 'warning');
     } else {
         downloadFile(fileObj);
     }
