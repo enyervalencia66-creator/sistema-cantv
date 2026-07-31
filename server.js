@@ -622,16 +622,16 @@ function pdfHeader(doc, eyebrow, titulo, subtitulo) {
     const pageWidth = doc.page.width;
     const contentWidth = pageWidth - PDF_MARGIN * 2;
 
-    try { doc.image(LOGO_DARK_PATH, PDF_MARGIN, 32, { height: 22 }); } catch (e) { /* si el asset no está disponible, se omite sin romper el PDF */ }
+    try { doc.image(LOGO_DARK_PATH, PDF_MARGIN, 20, { height: 38 }); } catch (e) { /* si el asset no está disponible, se omite sin romper el PDF */ }
 
     doc.font('Helvetica-Bold').fontSize(7.5).fillColor(PDF_MUTED)
-        .text('SISTEMA DE INVESTIGACIONES RELACIONALES', PDF_MARGIN, 34, { width: contentWidth, align: 'right', characterSpacing: 0.4 });
+        .text('SISTEMA DE INVESTIGACIONES RELACIONALES', PDF_MARGIN, 26, { width: contentWidth, align: 'right', characterSpacing: 0.4 });
     doc.font('Helvetica').fontSize(7.5).fillColor(PDF_MUTED)
-        .text(`Generado el ${new Date().toLocaleString('es-VE')}`, PDF_MARGIN, 45, { width: contentWidth, align: 'right' });
+        .text(`Generado el ${new Date().toLocaleString('es-VE')}`, PDF_MARGIN, 38, { width: contentWidth, align: 'right' });
 
-    doc.moveTo(PDF_MARGIN, 68).lineTo(pageWidth - PDF_MARGIN, 68).lineWidth(1.4).strokeColor(PDF_BRAND_BLUE).stroke();
+    doc.moveTo(PDF_MARGIN, 74).lineTo(pageWidth - PDF_MARGIN, 74).lineWidth(1.4).strokeColor(PDF_BRAND_BLUE).stroke();
 
-    doc.font('Helvetica-Bold').fontSize(8).fillColor(PDF_BRAND_BLUE).text(eyebrow.toUpperCase(), PDF_MARGIN, 80, { characterSpacing: 1.2 });
+    doc.font('Helvetica-Bold').fontSize(8).fillColor(PDF_BRAND_BLUE).text(eyebrow.toUpperCase(), PDF_MARGIN, 86, { characterSpacing: 1.2 });
     doc.font('Helvetica-Bold').fontSize(19).fillColor(PDF_BRAND_DARK).text(titulo, PDF_MARGIN, doc.y + 2, { width: contentWidth });
     doc.font('Helvetica-Oblique').fontSize(9.5).fillColor(PDF_MUTED).text(subtitulo, PDF_MARGIN, doc.y + 2, { width: contentWidth });
 
@@ -747,17 +747,31 @@ function pdfPeopleTable(doc, personas, showGrado) {
     doc.x = PDF_MARGIN;
 }
 
+const IMAGE_EXT_REGEX = /\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/i;
+
+// Si la URL apunta a una imagen y tenemos la URL base del servidor, la reescribe para pasar por
+// /visor-imagen en vez de enlazar directo al archivo de Supabase Storage. Un enlace de PDF solo
+// puede apuntar a una URL (no puede ejecutar el JS que bloquea el clic derecho en la app), así que
+// sin esta redirección el "clic derecho > Guardar imagen como" del visor de evidencia se podía
+// evitar por completo abriendo el documento desde el link del PDF.
+function resolveLinkUrl(rawUrl, baseUrl) {
+    if (baseUrl && IMAGE_EXT_REGEX.test(rawUrl)) {
+        return `${baseUrl}/visor-imagen?url=${encodeURIComponent(rawUrl)}`;
+    }
+    return rawUrl;
+}
+
 // Lista de enlaces a documentos adjuntos: texto en azul y subrayado, con `link` de PDF hacia la
-// URL real de Supabase Storage (se abren en el navegador; no van embebidos como archivo descargable
-// dentro del propio PDF).
-function pdfLinkList(doc, items) {
+// URL real de Supabase Storage (o hacia /visor-imagen si es una imagen, ver resolveLinkUrl); se
+// abren en el navegador, no van embebidos como archivo descargable dentro del propio PDF.
+function pdfLinkList(doc, items, baseUrl) {
     const clean = items.filter(it => it && it.url);
     if (!clean.length) return pdfParagraph(doc, 'Sin documentos adjuntos.');
     clean.forEach(it => {
         if (doc.y > doc.page.height - 90) doc.addPage();
         doc.font('Helvetica-Bold').fontSize(9).fillColor(PDF_MUTED).text(`•  ${it.label}:  `, PDF_MARGIN, doc.y, { continued: true, width: doc.page.width - PDF_MARGIN * 2 });
         doc.font('Helvetica').fontSize(9).fillColor(PDF_BRAND_BLUE)
-            .text(nombreDesdeUrl(it.url), { link: it.url, underline: true });
+            .text(nombreDesdeUrl(it.url), { link: resolveLinkUrl(it.url, baseUrl), underline: true });
     });
     doc.moveDown(0.5);
     doc.x = PDF_MARGIN;
@@ -790,7 +804,7 @@ function buildReportePdf(titulo, fechaGeneracion, subtitulo, { total, tasaCierre
 
 // Arma el PDF de un caso (investigación) completo: datos generales, plan de trabajo, sustanciación,
 // cierre gerencial, personas involucradas, documentos adjuntos (como enlaces) e historial de comentarios.
-function buildCasoPdf(c) {
+function buildCasoPdf(c, baseUrl) {
     return new Promise((resolve, reject) => {
         const doc = new PDFDocument({ size: 'LETTER', margin: 50, bufferPages: true });
         const chunks = [];
@@ -833,7 +847,7 @@ function buildCasoPdf(c) {
             c.sustanciacion?.xls && { label: 'Sustanciación — Documento 1', url: c.sustanciacion.xls },
             c.sustanciacion?.ppt && { label: 'Sustanciación — Documento 2', url: c.sustanciacion.ppt },
             c.memoFinal && { label: 'Memorándum de Cierre', url: c.memoFinal }
-        ].filter(Boolean));
+        ].filter(Boolean), baseUrl);
 
         pdfSectionTitle(doc, 'Historial de Comentarios');
         const mensajes = Array.isArray(c.historialMensajes) ? c.historialMensajes : [];
@@ -862,7 +876,7 @@ function buildCasoPdf(c) {
 
 // Arma el PDF de una incidencia (solicitud): datos generales, asunto, personas involucradas,
 // documentos adjuntos (como enlaces) y el historial de observaciones de aprobación/rechazo gerencial.
-function buildIncidenciaPdf(s) {
+function buildIncidenciaPdf(s, baseUrl) {
     return new Promise((resolve, reject) => {
         const doc = new PDFDocument({ size: 'LETTER', margin: 50, bufferPages: true });
         const chunks = [];
@@ -893,7 +907,7 @@ function buildIncidenciaPdf(s) {
         pdfLinkList(doc, [
             s.adjuntos?.xls && { label: 'Documento Soporte 1', url: s.adjuntos.xls },
             s.adjuntos?.ppt && { label: 'Documento Soporte 2', url: s.adjuntos.ppt }
-        ].filter(Boolean));
+        ].filter(Boolean), baseUrl);
 
         const observaciones = Array.isArray(s.observaciones) ? s.observaciones : [];
         if (observaciones.length > 0) {
@@ -1046,7 +1060,8 @@ app.post('/api/reports/pdf', authenticate, async (req, res) => {
 // de personas y responsables resueltos), así que se lo envía en el body en vez de re-consultarlo.
 app.post('/api/casos/pdf', authenticate, async (req, res) => {
     try {
-        const pdfBuffer = await buildCasoPdf(req.body || {});
+        const appUrl = `${req.protocol}://${req.get('host')}`;
+        const pdfBuffer = await buildCasoPdf(req.body || {}, appUrl);
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="Caso_${req.body?.id ?? Date.now()}.pdf"`);
         res.send(pdfBuffer);
@@ -1059,7 +1074,8 @@ app.post('/api/casos/pdf', authenticate, async (req, res) => {
 // 9. Exportar una Incidencia (solicitud) a PDF, mismo criterio que el de casos.
 app.post('/api/solicitudes/pdf', authenticate, async (req, res) => {
     try {
-        const pdfBuffer = await buildIncidenciaPdf(req.body || {});
+        const appUrl = `${req.protocol}://${req.get('host')}`;
+        const pdfBuffer = await buildIncidenciaPdf(req.body || {}, appUrl);
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="Incidencia_${req.body?.id ?? Date.now()}.pdf"`);
         res.send(pdfBuffer);
@@ -1067,6 +1083,41 @@ app.post('/api/solicitudes/pdf', authenticate, async (req, res) => {
         console.error('Error generando PDF de incidencia:', e);
         res.status(500).json({ error: e.message });
     }
+});
+
+// 10. Visor de imágenes con clic derecho desalentado. Los enlaces "Documentos Adjuntos" de los PDF
+// exportados (ver pdfLinkList) apuntan aquí en vez de a la URL cruda de Supabase Storage, porque un
+// enlace dentro de un PDF solo puede navegar a una URL — no puede ejecutar el JS que bloquea el
+// menú contextual en la app. Esta ruta envuelve la misma imagen en una página con
+// oncontextmenu bloqueado, igual que openStoredFileUrl/previewFile del lado del cliente.
+// No es protección real (herramientas de desarrollador o una captura de pantalla la sortean),
+// solo evita el guardado casual por menú.
+app.get('/visor-imagen', (req, res) => {
+    const raw = req.query.url;
+    if (!raw || typeof raw !== 'string') return res.status(400).send('Falta el parámetro "url".');
+
+    let target;
+    try { target = new URL(raw); } catch (e) { return res.status(400).send('URL inválida.'); }
+
+    // Solo se permite enlazar a archivos del propio bucket de Supabase Storage, para que esto no
+    // se convierta en un visor abierto de cualquier imagen de internet.
+    let allowedHost = null;
+    try { allowedHost = new URL(supabaseUrl).host; } catch (e) { /* sin SUPABASE_URL configurado, no se permite nada */ }
+    if (!allowedHost || target.host !== allowedHost) return res.status(400).send('Dominio no permitido.');
+
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(`<!doctype html><html><head><title>Vista de Documento</title><style>
+        html,body{margin:0;height:100%;background:#000;}
+        .wrap{position:relative;display:flex;justify-content:center;align-items:center;min-height:100vh;}
+        img{max-width:100%;max-height:100vh;-webkit-user-drag:none;user-select:none;pointer-events:none;}
+        .shield{position:absolute;inset:0;}
+    </style></head>
+    <body oncontextmenu="return false">
+        <div class="wrap">
+            <img src="${target.toString()}" draggable="false" alt="Documento">
+            <div class="shield" oncontextmenu="return false"></div>
+        </div>
+    </body></html>`);
 });
 
 // Default route to serve HTML
