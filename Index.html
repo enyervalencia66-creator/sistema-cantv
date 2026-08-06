@@ -5040,7 +5040,7 @@ document.addEventListener('input', function(e) {
     if (!e.target || !e.target.matches) return;
     
     // Nombres y Apellidos: Solo letras y espacios
-    if (e.target.matches('input[id*="Name"], input[id*="Nombre"], input[id*="nombre"], input[id*="apellido"], input[id*="Contacto"]')) {
+    if (e.target.matches('input[id*="name" i], input[id*="nombre" i], input[id*="apellido" i], input[id*="contacto" i]')) {
         let val = e.target.value;
         let newVal = val.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
         if (val !== newVal) {
@@ -5049,7 +5049,7 @@ document.addEventListener('input', function(e) {
     }
     
     // Teléfonos: Solo números, máx 12 caracteres
-    if (e.target.matches('input[type="tel"], input[id*="Telefono"], input[id*="telefono"]')) {
+    if (e.target.matches('input[type="tel" i], input[id*="telefono" i]')) {
         let val = e.target.value;
         let newVal = val.replace(/\D/g, '').slice(0, 12);
         if (val !== newVal) {
@@ -5058,7 +5058,7 @@ document.addEventListener('input', function(e) {
     }
     
     // Cédulas: Solo números, máx 10 caracteres
-    if (e.target.matches('input[id*="Cedula"], input[id*="cedula"]')) {
+    if (e.target.matches('input[id*="cedula" i]')) {
         let val = e.target.value;
         let newVal = val.replace(/\D/g, '').slice(0, 10);
         if (val !== newVal) {
