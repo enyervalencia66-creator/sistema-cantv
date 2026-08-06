@@ -35,7 +35,7 @@
 }
 
 body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Poppins', sans-serif;
     background: var(--bg-main);
     background-attachment: fixed;
     color: var(--text-primary);
@@ -110,7 +110,7 @@ h1, h2, h3 {
     border-radius: var(--radius-md);
     color: var(--text-primary);
     font-size: 1rem;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Poppins', sans-serif;
     transition: all 0.3s ease;
     outline: none;
 }
@@ -150,7 +150,7 @@ select.input-field option {
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     border: none;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Poppins', sans-serif;
 }
 
 .btn-primary {
