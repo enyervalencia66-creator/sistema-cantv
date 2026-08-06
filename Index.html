@@ -1070,6 +1070,7 @@ async function initDB() {
                     criticidad: s.criticidad || 'Alta',
                     estado: s.estatus,
                     creadoPor: creator ? creator.username : s.solicitante_id,
+                    regionOrigen: creator ? creator.region : 'Nacional',
                     creadoEl: s.created_at,
                     detalle: s.detalle,
                     adjuntos: { xls: s.documento_1 || null, ppt: s.documento_2 || null },
@@ -1140,6 +1141,7 @@ async function initDB() {
                     asunto: c.descripcion_hechos,
                     estado: c.estatus,
                     creadorOriginal: resolveUser(c.denunciante_id),
+                    regionOrigen: (db.users.find(x => x.id == c.denunciante_id || x.username === c.denunciante_id)?.region) || 'Nacional',
                     asignadoA: currentAsignado,
                     coordinadorAsignado: coordName,
                     supervisorAsignado: superName,
@@ -2497,8 +2499,7 @@ function renderSolicitudes() {
     if (!hasPermission('apruebo_incidencias')) {
         if (currentUser.role === ROLES.COORD || currentUser.role === ROLES.SUPER) {
             // Coord & Super: ven las incidencias de toda su región
-            const regionUsers = db.users.filter(u => u.region === currentUser.region).map(u => u.username);
-            list = list.filter(s => regionUsers.includes(s.creadoPor) || s.creadoPor === currentUser.username);
+            list = list.filter(s => s.regionOrigen === currentUser.region || s.creadoPor === currentUser.username);
         } else {
             // Especialista: solo las suyas
             list = list.filter(s => s.creadoPor === currentUser.username);
@@ -2632,6 +2633,8 @@ function renderImagenProtegidaHtml(src) {
 // sin forzar la descarga. Word/Excel/PowerPoint se visualizan con el visor de Office Online; las
 // imágenes se envuelven en una página propia para poder desalentar el clic derecho (ver arriba);
 // el resto (PDFs, etc.) los renderiza el navegador de forma nativa al abrirlos en una pestaña nueva.
+// Usada para los documentos del EXPEDIENTE (estudios, referencias laborales) y reportes del
+// sistema, donde sí se permite que el visor nativo del navegador ofrezca su propia descarga.
 function openStoredFileUrl(url) {
     if (!url) return showToast('Archivo no disponible.', 'error');
     if (/\.(docx?|xlsx?|pptx?)(\?.*)?$/i.test(url)) {
@@ -2640,6 +2643,103 @@ function openStoredFileUrl(url) {
         const w = window.open();
         if (w) w.document.write(renderImagenProtegidaHtml(url));
         else showToast('El navegador bloqueó la ventana emergente.', 'warning');
+    } else {
+        window.open(url, '_blank');
+    }
+}
+
+// Carga pdf.js (servido localmente desde /vendor/pdfjs, no un CDN externo) solo la primera vez que
+// se abre un PDF, para no cargar ~1.7MB de JS en cada visita a la app.
+let _pdfjsLibPromise = null;
+function cargarPdfjs() {
+    if (!_pdfjsLibPromise) {
+        _pdfjsLibPromise = import('/vendor/pdfjs/pdf.min.mjs').then(lib => {
+            lib.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/pdf.worker.min.mjs';
+            return lib;
+        });
+    }
+    return _pdfjsLibPromise;
+}
+
+// Visor de PDF 100% interno: renderiza cada página como píxeles en un <canvas> propio, en vez de
+// abrir el visor nativo del navegador (que trae su propio botón de descarga/impresión en la
+// barra de herramientas). Deliberadamente NO incluye la capa de texto seleccionable de pdf.js,
+// para no facilitar copiar/extraer el contenido. Como el <canvas> se pinta con fetch() hecho por
+// nuestra propia página (no una navegación directa a la URL del archivo), no hay "Guardar como"
+// nativo del navegador apuntando al PDF.
+async function abrirPdfInterno(url, nombre) {
+    const overlay = document.createElement('div');
+    overlay.id = 'pdfViewerOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:#0f172a;z-index:9998;display:flex;flex-direction:column;';
+    overlay.oncontextmenu = () => false;
+    overlay.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:0.75rem 1.25rem;background:#111827;color:#fff;flex-shrink:0;">
+            <span style="font-weight:600;font-size:0.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nombre || 'Documento'}</span>
+            <div style="display:flex;align-items:center;gap:0.6rem;flex-shrink:0;">
+                <button id="pdfPrevBtn" class="btn btn-secondary btn-sm">‹ Anterior</button>
+                <span id="pdfPageInfo" style="font-size:0.8rem;color:#cbd5e1;white-space:nowrap;">Cargando…</span>
+                <button id="pdfNextBtn" class="btn btn-secondary btn-sm">Siguiente ›</button>
+                <button id="pdfCloseBtn" class="btn btn-secondary btn-sm">✕ Cerrar</button>
+            </div>
+        </div>
+        <div id="pdfCanvasWrap" style="flex:1;overflow:auto;display:flex;justify-content:center;padding:1.5rem;" oncontextmenu="return false">
+            <canvas id="pdfCanvas" style="box-shadow:0 4px 24px rgba(0,0,0,0.4);height:fit-content;user-select:none;-webkit-user-drag:none;"></canvas>
+        </div>`;
+    document.body.appendChild(overlay);
+
+    const cerrarVisor = () => { overlay.remove(); document.removeEventListener('keydown', onEsc); };
+    const onEsc = (e) => { if (e.key === 'Escape') cerrarVisor(); };
+    overlay.querySelector('#pdfCloseBtn').onclick = cerrarVisor;
+    document.addEventListener('keydown', onEsc);
+
+    try {
+        const pdfjsLib = await cargarPdfjs();
+        const pdf = await pdfjsLib.getDocument({ url }).promise;
+        let currentPage = 1;
+        const canvas = overlay.querySelector('#pdfCanvas');
+        const pageInfo = overlay.querySelector('#pdfPageInfo');
+        const prevBtn = overlay.querySelector('#pdfPrevBtn');
+        const nextBtn = overlay.querySelector('#pdfNextBtn');
+
+        async function renderPage(num) {
+            const page = await pdf.getPage(num);
+            const viewport = page.getViewport({ scale: 1.5 });
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+            pageInfo.textContent = `Página ${num} de ${pdf.numPages}`;
+            prevBtn.disabled = num <= 1;
+            nextBtn.disabled = num >= pdf.numPages;
+        }
+
+        prevBtn.onclick = () => { if (currentPage > 1) renderPage(--currentPage); };
+        nextBtn.onclick = () => { if (currentPage < pdf.numPages) renderPage(++currentPage); };
+        if (pdf.numPages <= 1) { prevBtn.style.visibility = 'hidden'; nextBtn.style.visibility = 'hidden'; }
+
+        await renderPage(currentPage);
+    } catch (err) {
+        console.error('abrirPdfInterno error:', err);
+        overlay.querySelector('#pdfCanvasWrap').innerHTML = `<p style="color:#f87171;align-self:center;">No se pudo cargar el documento.</p>`;
+    }
+}
+
+// Abre un documento adjunto de un CASO o INCIDENCIA (sustanciación, memorándum de cierre,
+// soportes de incidencia) evitando en lo posible que quede descargable: las imágenes usan la vista
+// protegida de siempre y los PDF se renderizan con el visor interno (sin botón de descarga nativo).
+// Word/Excel/PowerPoint todavía se abren con el visor de Office Online (un iframe de Microsoft que
+// no controlamos y sí permite descargar desde ahí) hasta que esos adjuntos se conviertan a PDF en
+// el servidor. Los documentos del EXPEDIENTE (estudios, referencias) NO pasan por aquí — siguen
+// usando openStoredFileUrl con descarga permitida.
+function abrirDocumentoCaso(url, nombre) {
+    if (!url) return showToast('Archivo no disponible.', 'error');
+    if (/\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/i.test(url)) {
+        const w = window.open();
+        if (w) w.document.write(renderImagenProtegidaHtml(url));
+        else showToast('El navegador bloqueó la ventana emergente.', 'warning');
+    } else if (/\.pdf(\?.*)?$/i.test(url)) {
+        abrirPdfInterno(url, nombre);
+    } else if (/\.(docx?|xlsx?|pptx?)(\?.*)?$/i.test(url)) {
+        window.open('https://view.officeapps.live.com/op/view.aspx?src=' + encodeURIComponent(url), '_blank');
     } else {
         window.open(url, '_blank');
     }
@@ -2662,9 +2762,7 @@ function previewFile(fileObj) {
         if (w) w.document.write(renderImagenProtegidaHtml(fileObj.data));
         else showToast('El navegador bloqueó la ventana emergente.', 'warning');
     } else if (fileObj.type === 'application/pdf') {
-        const w = window.open();
-        if (w) w.document.write(`<iframe src="${fileObj.data}" style="width:100vw;height:100vh;border:none"></iframe>`);
-        else showToast('El navegador bloqueó la ventana emergente.', 'warning');
+        abrirPdfInterno(fileObj.data, fileObj.name);
     } else {
         downloadFile(fileObj);
     }
@@ -2688,6 +2786,9 @@ function renderFileChip(fileObj, label, uploaderUsername) {
     </div>`;
 }
 
+// Muestra un adjunto de CASO/INCIDENCIA: solo vista, sin botón de descarga para nadie (ni
+// siquiera para quien lo subió) — la única forma de llevarse ese documento es el botón
+// "Exportar PDF". Los adjuntos del expediente (estudios, referencias) NO usan esta función.
 function renderFileBadge(fileObj, uploaderUsername) {
     if (!fileObj) return '';
     const isStr = typeof fileObj === 'string';
@@ -2699,18 +2800,12 @@ function renderFileBadge(fileObj, uploaderUsername) {
     const encoded = !isStr ? encodeURIComponent(JSON.stringify(fileObj)) : '';
     const encodedUrl = isUrl ? encodeURIComponent(fileObj) : '';
     const encodedName = isUrl ? encodeURIComponent(name) : '';
-    // Solo quien subió el archivo puede descargarlo; el resto solo puede verlo/previsualizarlo.
-    const puedeDescargar = !!uploaderUsername && !!currentUser && currentUser.username === uploaderUsername;
 
     let buttons = '';
     if (isUrl) {
-        buttons = `<button class="file-action-btn file-action-view icon-only" title="Ver Documento" onclick="openStoredFileUrl(decodeURIComponent('${encodedUrl}'))">${ICON_EYE_SM}</button>
-        ${puedeDescargar ? `<button class="file-action-btn file-action-download icon-only" title="Descargar" onclick="downloadFile({name: decodeURIComponent('${encodedName}'), data: decodeURIComponent('${encodedUrl}')})">${ICON_DOWNLOAD}</button>` : ''}`;
+        buttons = `<button class="file-action-btn file-action-view icon-only" title="Ver Documento" onclick="abrirDocumentoCaso(decodeURIComponent('${encodedUrl}'), decodeURIComponent('${encodedName}'))">${ICON_EYE_SM}</button>`;
     } else if (!isStr) {
-        buttons = `
-        <button class="file-action-btn file-action-view icon-only" title="Ver" onclick="previewFile(JSON.parse(decodeURIComponent('${encoded}')))">${ICON_EYE_SM}</button>
-        ${puedeDescargar ? `<button class="file-action-btn file-action-download icon-only" title="Descargar" onclick="downloadFile(JSON.parse(decodeURIComponent('${encoded}')))">${ICON_DOWNLOAD}</button>` : ''}
-        `;
+        buttons = `<button class="file-action-btn file-action-view icon-only" title="Ver" onclick="previewFile(JSON.parse(decodeURIComponent('${encoded}')))">${ICON_EYE_SM}</button>`;
     } else {
         buttons = `<span style="font-size:0.65rem;color:var(--text-muted);white-space:nowrap">(Antiguo)</span>`;
     }
@@ -3110,6 +3205,17 @@ function getTimeInState(updateMs) {
 
 function renderCasos() {
     let list = db.casos;
+
+    if (currentUser.role !== ROLES.GERENTE) {
+        list = list.filter(c => 
+            c.regionOrigen === currentUser.region || 
+            c.asignadoA === currentUser.username || 
+            c.coordinadorAsignado === currentUser.username || 
+            c.supervisorAsignado === currentUser.username || 
+            c.especialistaAsignado === currentUser.username ||
+            c.creadorOriginal === currentUser.username
+        );
+    }
 
     // Filter out closed cases older than 3 days (only for Kanban or general visibility)
     const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
@@ -4929,6 +5035,38 @@ async function bootApp() {
     }
     navigate('login');
 }
+// --- GLOBAL INPUT VALIDATIONS ---
+document.addEventListener('input', function(e) {
+    if (!e.target || !e.target.matches) return;
+    
+    // Nombres y Apellidos: Solo letras y espacios
+    if (e.target.matches('input[id*="Name"], input[id*="Nombre"], input[id*="nombre"], input[id*="apellido"], input[id*="Contacto"]')) {
+        let val = e.target.value;
+        let newVal = val.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
+        if (val !== newVal) {
+            e.target.value = newVal;
+        }
+    }
+    
+    // Teléfonos: Solo números, máx 12 caracteres
+    if (e.target.matches('input[type="tel"], input[id*="Telefono"], input[id*="telefono"]')) {
+        let val = e.target.value;
+        let newVal = val.replace(/\D/g, '').slice(0, 12);
+        if (val !== newVal) {
+            e.target.value = newVal;
+        }
+    }
+    
+    // Cédulas: Solo números, máx 10 caracteres
+    if (e.target.matches('input[id*="Cedula"], input[id*="cedula"]')) {
+        let val = e.target.value;
+        let newVal = val.replace(/\D/g, '').slice(0, 10);
+        if (val !== newVal) {
+            e.target.value = newVal;
+        }
+    }
+});
+
 bootApp();
     </script>
 </body>
