@@ -4052,12 +4052,11 @@ function renderCaseDetail(id) {
             </div>
             <div class="case-block-body">${actions}</div>
         </div>` : ''}
-        
-        <button class="fab-up" onclick="document.getElementById('main-content').scrollTo({top:0, behavior:'smooth'})" title="Volver al inicio">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="18 15 12 9 6 15"></polyline></svg>
-            <span class="expand-text">Volver arriba</span>
-        </button>
-    </div>`;
+    </div>
+    <button class="fab-up" onclick="document.getElementById('main-content').scrollTo({top:0, behavior:'smooth'})" title="Volver al inicio">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="18 15 12 9 6 15"></polyline></svg>
+        <span class="expand-text">Volver arriba</span>
+    </button>`;
 }
 function updateFileZone(inputId, zoneId, nameId) {
     const input = document.getElementById(inputId);
