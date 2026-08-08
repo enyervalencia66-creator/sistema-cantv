@@ -876,6 +876,56 @@ function showToast(msg, type='success') {
     setTimeout(() => { toast.style.opacity='1'; toast.style.transform='translateX(-50%) translateY(0)'; }, 10);
     setTimeout(() => { toast.style.opacity='0'; toast.style.transform='translateX(-50%) translateY(-20px)'; setTimeout(()=>toast.remove(),300); }, 3500);
 }
+
+let sysUndoTimeout = null;
+let sysUndoReject = null;
+let sysUndoToast = null;
+function waitForUndo(msg) {
+    return new Promise((resolve, reject) => {
+        if (sysUndoTimeout) {
+            clearTimeout(sysUndoTimeout);
+            if (sysUndoReject) sysUndoReject(new Error("CANCELLED_BY_NEW"));
+            if (sysUndoToast) sysUndoToast.remove();
+        }
+        
+        sysUndoToast = document.createElement('div');
+        sysUndoToast.className = 'undo-toast';
+        sysUndoToast.innerHTML = `
+            <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                <span>${msg}</span>
+                <button class="btn-undo" onclick="cancelUndo()">Deshacer</button>
+            </div>
+            <div class="undo-progress"></div>
+        `;
+        document.body.appendChild(sysUndoToast);
+        
+        setTimeout(() => { sysUndoToast.classList.add('show'); }, 10);
+        
+        sysUndoReject = reject;
+        sysUndoTimeout = setTimeout(() => {
+            if (sysUndoToast) {
+                sysUndoToast.classList.remove('show');
+                setTimeout(() => { if(sysUndoToast) sysUndoToast.remove(); sysUndoToast = null; }, 300);
+            }
+            sysUndoTimeout = null;
+            sysUndoReject = null;
+            resolve();
+        }, 5000);
+    });
+}
+window.cancelUndo = function() {
+    if (sysUndoTimeout) {
+        clearTimeout(sysUndoTimeout);
+        if (sysUndoReject) sysUndoReject(new Error("UNDONE"));
+        sysUndoTimeout = null;
+        sysUndoReject = null;
+        if (sysUndoToast) {
+            sysUndoToast.classList.remove('show');
+            setTimeout(() => { if(sysUndoToast) sysUndoToast.remove(); sysUndoToast = null; }, 300);
+        }
+        showToast('Acción deshecha', 'info');
+    }
+};
 async function uiConfirm(msg, title='Confirmación') {
     return await createModalUI(`<h3 class="font-bold text-xl mb-4" style="color: var(--cantv-blue-light);">${title}</h3><p class="text-secondary mb-6 text-sm">${msg}</p><div class="flex gap-2"><button class="btn btn-primary flex-1" onclick="closeModalUI(true)">Sí, continuar</button><button class="btn btn-secondary flex-1" onclick="closeModalUI(false)">Cancelar</button></div>`);
 }
@@ -1227,6 +1277,7 @@ async function initDB() {
 }
 
 async function registrarCambioEstado(c, nuevoEstado) {
+    try { await waitForUndo(`Cambiando estado a ${nuevoEstado}...`); } catch(e) { return; }
     if (!c.estadoLog) c.estadoLog = [];
     const logEntry = {
         investigacion_id: c.id,
@@ -2822,6 +2873,7 @@ async function crearSolicitud(e) {
     if (!validarFormulario(e.target)) return;
     const btn = e.target.querySelector('button[type="submit"]');
     if (!lockAction(btn)) return;
+    try { await waitForUndo("Enviando solicitud..."); } catch(err) { unlockAction(btn); return; }
 
     try {
         const f1 = document.getElementById('solXls').files[0];
@@ -3059,6 +3111,7 @@ function escalarSolicitud(id, nextState, nextUser, msjNotif) {
 async function aprobarSolicitudGerente(id) {
     const btn = event && event.currentTarget ? event.currentTarget : null;
     if (!lockAction(btn)) return;
+    try { await waitForUndo("Aprobando solicitud y creando caso..."); } catch(e) { unlockAction(btn); return; }
     try {
     const s = db.solicitudes.find(x => x.id == id);
     const obsVal = document.getElementById('solObs') ? document.getElementById('solObs').value.trim() : '';
@@ -3149,6 +3202,7 @@ async function rechazarSolicitudGerente(id) {
     const obs = document.getElementById('solObs') ? document.getElementById('solObs').value.trim() : '';
     if (!obs) return uiAlert('Debe escribir el motivo del rechazo antes de rechazar.');
     if (!lockAction(btn)) return;
+    try { await waitForUndo("Rechazando solicitud..."); } catch(err) { unlockAction(btn); return; }
 
     try {
         const s = db.solicitudes.find(x => x.id == id);
@@ -3886,6 +3940,7 @@ window.eliminarPersonaVisual = function(casoId, cedula) {
 async function iniciarSustanciacion(id) {
     const btn = event && event.currentTarget ? event.currentTarget : null;
     if (!lockAction(btn)) return;
+    try { await waitForUndo("Iniciando sustanciación..."); } catch(err) { unlockAction(btn); return; }
     try {
         const c = db.casos.find(x => x.id == id);
 
@@ -3921,6 +3976,7 @@ async function submitSust(e, id) {
     }
 
     if (!lockAction(btn)) return;
+    try { await waitForUndo("Enviando sustanciación..."); } catch(err) { unlockAction(btn); return; }
     try {
 
     // Procesar vinculaciones/desvinculaciones pendientes
@@ -4019,6 +4075,7 @@ async function submitSust(e, id) {
 async function aprobarSupervisor(id) {
     const btn = event && event.currentTarget ? event.currentTarget : null;
     if (!lockAction(btn)) return;
+    try { await waitForUndo("Aprobando caso..."); } catch(e) { unlockAction(btn); return; }
     try {
         const c = db.casos.find(x => x.id == id);
         const obs = document.getElementById('superObs').value.trim();
@@ -4049,6 +4106,7 @@ async function rechazarCasoSupervisor(id) {
     const obs = document.getElementById('superObs').value.trim();
     if(!obs) return uiAlert('Debe incluir un motivo de rechazo.');
     if (!lockAction(btn)) return;
+    try { await waitForUndo("Devolviendo caso..."); } catch(err) { unlockAction(btn); return; }
     try {
         const c = db.casos.find(x => x.id == id);
 
@@ -4071,6 +4129,7 @@ async function rechazarCasoSupervisor(id) {
 async function aprobarCoordinador(id) {
     const btn = event && event.currentTarget ? event.currentTarget : null;
     if (!lockAction(btn)) return;
+    try { await waitForUndo("Aprobando revisión final..."); } catch(e) { unlockAction(btn); return; }
     try {
         const c = db.casos.find(x => x.id == id);
         const obs = document.getElementById('coordObs') ? document.getElementById('coordObs').value.trim() : '';
@@ -4100,6 +4159,7 @@ async function rechazarCasoCoordinador(id) {
     const obs = document.getElementById('coordObs') ? document.getElementById('coordObs').value.trim() : '';
     if (!obs) return uiAlert('Debe incluir el motivo de rechazo.');
     if (!lockAction(btn)) return;
+    try { await waitForUndo("Devolviendo caso..."); } catch(err) { unlockAction(btn); return; }
     try {
         const c = db.casos.find(x => x.id == id);
 
@@ -4125,6 +4185,7 @@ async function coordElaborarPlan(id) {
     const pt = document.getElementById('planTrabajo') ? document.getElementById('planTrabajo').value.trim() : '';
     if (!pt) return uiAlert('Debe redactar el Plan de Trabajo antes de enviar.');
     if (!lockAction(btn)) return;
+    try { await waitForUndo("Guardando plan de trabajo..."); } catch(err) { unlockAction(btn); return; }
     try {
 
     const payload = {
@@ -4160,6 +4221,7 @@ async function superAsignarEsp(id) {
     if (!espUsername) return uiAlert('Debe seleccionar un especialista.');
     if (!limit) return uiAlert('Debe establecer una fecha límite.');
     if (!lockAction(btn)) return;
+    try { await waitForUndo("Asignando especialista..."); } catch(err) { unlockAction(btn); return; }
     try {
 
     const espUser = db.users.find(u => u.username === espUsername);
@@ -4194,6 +4256,7 @@ async function cerrarCasoGerencia(e, id) {
     if (!validarFormulario(e.target)) return;
     const btn = e.target.querySelector('button');
     if (!lockAction(btn)) return;
+    try { await waitForUndo("Cerrando caso..."); } catch(err) { unlockAction(btn); return; }
     try {
         const c = db.casos.find(x => x.id == id);
         const memo = document.getElementById('memoPdf').files[0];
@@ -4470,6 +4533,7 @@ async function submitPersona(e) {
     }
 
     if (!lockAction(btn, 'Guardando...')) return;
+    try { await waitForUndo("Guardando expediente..."); } catch(err) { unlockAction(btn); return; }
 
     const payload = {
         p00: p00,

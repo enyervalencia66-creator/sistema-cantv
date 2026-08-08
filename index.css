@@ -450,3 +450,52 @@ select.input-field option {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+/* Undo Toast */
+.undo-toast {
+    position: fixed;
+    bottom: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #111827;
+    color: white;
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    z-index: 10000;
+    transition: bottom 0.3s ease;
+    min-width: 300px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+.undo-toast.show {
+    bottom: 40px;
+}
+.undo-toast .btn-undo {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #34d399;
+    font-weight: bold;
+    padding: 0.3rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+}
+.undo-toast .btn-undo:hover {
+    background: rgba(255,255,255,0.1);
+}
+.undo-progress {
+    height: 3px;
+    background: #34d399;
+    width: 100%;
+    border-radius: 2px;
+    animation: undo-shrink 5s linear forwards;
+    transform-origin: left;
+}
+@keyframes undo-shrink {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
+}
