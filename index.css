@@ -244,6 +244,11 @@ select.input-field option {
     margin-top: 1.5rem;
 }
 
+.case-header { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1.75rem; }
+.case-back-btn { margin-top: 0.25rem; }
+.case-title { font-size: 1.6rem; font-weight: 700; margin: 0; letter-spacing: -0.015em; line-height: 1.2; }
+.case-subtitle { color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.35rem; }
+
 .table-header {
     background: #f1f5f9;
     text-transform: uppercase;
