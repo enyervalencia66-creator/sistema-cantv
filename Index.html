@@ -1492,11 +1492,6 @@ function navigate(viewName, params = null) {
     }
     else if (viewName === 'casos') mainContent.innerHTML = renderCasos();
     else if (viewName === 'case-detail') {
-        const casoObj = db.casos.find(x => x.id == params.id);
-        if (casoObj && currentUser.role === ROLES.ESP && (casoObj.estado === ESTADOS_CASO.PENDIENTE_COORD || casoObj.estado === ESTADOS_CASO.PENDIENTE_SUPER)) {
-            uiAlert('No tienes permisos para ver este caso aún. Está en revisión de niveles superiores.');
-            return navigate('casos');
-        }
         markNotifsReadForView('case-detail', params.id);
         mainContent.innerHTML = renderCaseDetail(params.id);
     }
@@ -3368,15 +3363,15 @@ function renderCasos() {
         // OTROS ROLES: BANDEJA DE TRABAJO
         let myCases = [];
         let trackedCases = [];
+        let pendingApprovalCases = [];
         
         if (currentUser.role === ROLES.ESP) {
-            // No permitir ver el caso si está en niveles superiores
-            list = list.filter(c => c.estado !== ESTADOS_CASO.PENDIENTE_COORD && c.estado !== ESTADOS_CASO.PENDIENTE_SUPER);
-            
             // Especialista: solo lo asignado a él donde tenga acciones
             myCases = list.filter(c => c.asignadoA === currentUser.username);
             // El resto de sus casos van a seguimiento
             trackedCases = list.filter(c => c.especialistaAsignado === currentUser.username && !myCases.includes(c));
+            // Casos recién creados pendientes por aprobar en niveles superiores
+            pendingApprovalCases = list.filter(c => c.creadorOriginal === currentUser.username && (c.estado === ESTADOS_CASO.PENDIENTE_COORD || c.estado === ESTADOS_CASO.PENDIENTE_SUPER));
         } else if (currentUser.role === ROLES.SUPER || currentUser.role === ROLES.COORD) {
             // Todos los casos de la región
             const myRegionUsers = db.users.filter(u => u.region === currentUser.region).map(u => u.username);
@@ -3453,6 +3448,16 @@ function renderCasos() {
             return html + `</tbody></table>`;
         };
 
+        let pendingHtml = '';
+        if (currentUser.role === ROLES.ESP) {
+            pendingHtml = `
+            <div class="page-header" style="align-items: center; margin-top: 2rem; margin-bottom: 1.5rem;">
+                <h1 class="page-title" style="font-size: 1.25rem;">Pendiente por Aprobar (Niveles Superiores)</h1>
+                <input type="text" class="input-field search-input" placeholder="Buscar..." maxlength="50" onkeyup="filterTable('pendCasosTable', this.value)">
+            </div>
+            <div class="glass-card p-0">${renderTable(pendingApprovalCases, false, 'pendCasosTable')}</div>`;
+        }
+
         return `<div class="view-enter max-w-5xl">
             <div class="page-header" style="align-items: center; margin-bottom: 1.5rem;">
                 <h1 class="page-title">Casos Activos</h1>
@@ -3465,6 +3470,7 @@ function renderCasos() {
                 <input type="text" class="input-field search-input" placeholder="Buscar..." maxlength="50" onkeyup="filterTable('segCasosTable', this.value)">
             </div>
             <div class="glass-card p-0">${renderTable(trackedCases, false, 'segCasosTable')}</div>
+            ${pendingHtml}
         </div>`;
     }
 }
