@@ -2730,12 +2730,6 @@ function renderSolicitudes() {
             <h1 class="page-title">${titleLabel}</h1>
             <div class="flex gap-4 items-stretch">
                 <input type="text" class="input-field" placeholder="Buscar por ID o Asunto..." onkeyup="filterTable('solTable', this.value)" maxlength="50">
-                <select class="input-field" style="width: auto;" onchange="setSort(this.value, 'solicitudes')">
-                    <option value="reciente" ${sortSolicitudes==='reciente'?'selected':''}>Más recientes</option>
-                    <option value="antiguo" ${sortSolicitudes==='antiguo'?'selected':''}>Más antiguos</option>
-                    <option value="criticidad-desc" ${sortSolicitudes==='criticidad-desc'?'selected':''}>Criticidad (Alta a Baja)</option>
-                    <option value="criticidad-asc" ${sortSolicitudes==='criticidad-asc'?'selected':''}>Criticidad (Baja a Alta)</option>
-                </select>
                 ${hasPermission('registro_incidencias') ? `<button class="btn btn-primary whitespace-nowrap" onclick="navigate('create-solicitud')">+ Nueva Incidencia</button>` : ''}
             </div>
         </div>
@@ -2743,7 +2737,14 @@ function renderSolicitudes() {
             ${tabs.map(t => `<button class="btn ${solicitudesTab === t.key ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="setSolicitudesTab('${t.key}')">${t.label} <span class="badge" style="margin-left:0.4rem;background:${solicitudesTab === t.key ? 'rgba(255,255,255,0.25)' : 'var(--glass-bg-strong)'}">${t.data.length}</span></button>`).join('')}
         </div>
         <div class="glass-card p-0"><table id="solTable" class="table-container m-0">
-            <thead><tr class="table-header"><th>ID</th><th>Asunto</th><th>Estado</th><th>Enviado Por</th><th>Acción</th></tr></thead><tbody>`;
+            <thead><tr class="table-header"><th>ID</th><th>Asunto</th><th>Estado</th><th>Enviado Por</th><th style="text-align:right">
+                <select onchange="setSort(this.value, 'solicitudes')" style="background:transparent; border:none; color:inherit; outline:none; cursor:pointer; text-transform:none; font-weight:700; letter-spacing:normal;">
+                    <option value="reciente" style="color:#000" ${sortSolicitudes==='reciente'?'selected':''}>▼ Orden: Recientes</option>
+                    <option value="antiguo" style="color:#000" ${sortSolicitudes==='antiguo'?'selected':''}>▲ Orden: Antiguos</option>
+                    <option value="criticidad-desc" style="color:#000" ${sortSolicitudes==='criticidad-desc'?'selected':''}>▼ Orden: Criticidad</option>
+                    <option value="criticidad-asc" style="color:#000" ${sortSolicitudes==='criticidad-asc'?'selected':''}>▲ Orden: Criticidad</option>
+                </select>
+            </th></tr></thead><tbody>`;
     if(list.length===0) html += `<tr><td colspan="5" class="text-center p-6 text-muted">No hay incidencias en esta categoría</td></tr>`;
     else list.forEach(s => {
         const isPinned = (s.anclados || []).includes(currentUser.username);
@@ -3588,7 +3589,14 @@ function renderCasos() {
             });
 
             let html = `<table id="${tableId}" class="table-container m-0">
-                <thead><tr class="table-header"><th>ID</th><th>Asunto</th><th>Estado</th><th>Responsable</th><th></th></tr></thead><tbody>`;
+                <thead><tr class="table-header"><th>ID</th><th>Asunto</th><th>Estado</th><th>Responsable</th><th style="text-align:right">
+                    <select onchange="setSort(this.value, 'casos')" style="background:transparent; border:none; color:inherit; outline:none; cursor:pointer; text-transform:none; font-weight:700; letter-spacing:normal;">
+                        <option value="reciente" style="color:#000" ${sortCasos==='reciente'?'selected':''}>▼ Orden: Recientes</option>
+                        <option value="antiguo" style="color:#000" ${sortCasos==='antiguo'?'selected':''}>▲ Orden: Antiguos</option>
+                        <option value="criticidad-desc" style="color:#000" ${sortCasos==='criticidad-desc'?'selected':''}>▼ Orden: Criticidad</option>
+                        <option value="criticidad-asc" style="color:#000" ${sortCasos==='criticidad-asc'?'selected':''}>▲ Orden: Criticidad</option>
+                    </select>
+                </th></tr></thead><tbody>`;
             cases.forEach(c => {
                 const isPinned = (c.anclados || []).includes(currentUser.username);
                 const isFav = (c.favoritos || []).includes(currentUser.username);
@@ -3634,12 +3642,6 @@ function renderCasos() {
                 <h1 class="page-title">Casos Activos</h1>
                 <div class="flex gap-4 items-stretch">
                     <input type="text" class="input-field search-input" placeholder="Buscar por ID o Asunto..." onkeyup="filterTable('casosBandejaTable', this.value)" maxlength="50">
-                    <select class="input-field" style="width: auto;" onchange="setSort(this.value, 'casos')">
-                        <option value="reciente" ${sortCasos==='reciente'?'selected':''}>Más recientes</option>
-                        <option value="antiguo" ${sortCasos==='antiguo'?'selected':''}>Más antiguos</option>
-                        <option value="criticidad-desc" ${sortCasos==='criticidad-desc'?'selected':''}>Criticidad (Alta a Baja)</option>
-                        <option value="criticidad-asc" ${sortCasos==='criticidad-asc'?'selected':''}>Criticidad (Baja a Alta)</option>
-                    </select>
                 </div>
             </div>
             
