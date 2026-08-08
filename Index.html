@@ -3916,12 +3916,6 @@ function renderCaseDetail(id) {
                         ${c.sustanciacion.ppt ? renderFileBadge(c.sustanciacion.ppt, c.especialistaAsignado) : ''}
                     </div>
                 </div>` : ''}
-                <div style="margin-top:1.5rem;display:flex;justify-content:flex-end;">
-                    <button class="btn btn-secondary btn-sm btn-expandable" onclick="document.getElementById('main-content').scrollTo({top:0, behavior:'smooth'})">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="18 15 12 9 6 15"></polyline></svg>
-                        <span class="expand-text">Volver arriba</span>
-                    </button>
-                </div>
             </div>
         </div>` : ''}
 
@@ -3964,6 +3958,13 @@ function renderCaseDetail(id) {
             </div>
             <div class="case-block-body">${actions}</div>
         </div>` : ''}
+        
+        <div style="margin-top:1.5rem;display:flex;justify-content:flex-end;">
+            <button class="btn btn-secondary btn-sm btn-expandable" onclick="document.getElementById('main-content').scrollTo({top:0, behavior:'smooth'})">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                <span class="expand-text">Volver arriba</span>
+            </button>
+        </div>
     </div>`;
 }
 function updateFileZone(inputId, zoneId, nameId) {
