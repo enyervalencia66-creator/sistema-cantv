@@ -647,12 +647,12 @@ input[type="file"]::file-selector-button:hover { background: #d1d5db; }
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
     white-space: nowrap;
-    width: 44px;
+    max-width: 44px;
     height: 44px;
     cursor: pointer;
 }
 .fab-up:hover {
-    width: 155px;
+    max-width: 250px;
     padding: 0.5rem 1.2rem;
     box-shadow: 0 6px 16px rgba(0,0,0,0.2);
 }
@@ -663,9 +663,10 @@ input[type="file"]::file-selector-button:hover { background: #d1d5db; }
     font-size: 0.9rem;
     font-weight: 600;
     font-family: 'Poppins', sans-serif;
+    margin: 0; padding: 0;
 }
 .fab-up:hover .expand-text {
-    max-width: 120px;
+    max-width: 150px;
     opacity: 1;
     margin-left: 0.5rem;
 }
@@ -1556,13 +1557,35 @@ function navigate(viewName, params = null) {
                         </button>
                     </div>
                 </aside>
-                <div class="content-wrapper">
+                <div class="main-wrapper">
                     <header class="topbar" id="topbar-container"></header>
                     <main class="content-area" id="main-content"></main>
+                    
+                    <!-- Global Scroll to Top Button -->
+                    <button id="global-scroll-top" class="fab-up" style="display: none; opacity: 0;" onclick="document.getElementById('main-content').scrollTo({top:0, behavior:'smooth'})" title="Volver al inicio">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                        <span class="expand-text">Volver arriba</span>
+                    </button>
                 </div>
             </div>
         `;
         mainContent = document.getElementById('main-content');
+        
+        // Setup global scroll listener for the scroll-to-top button
+        mainContent.addEventListener('scroll', () => {
+            const btn = document.getElementById('global-scroll-top');
+            if (!btn) return;
+            if (mainContent.scrollTop > 300) {
+                btn.style.display = 'inline-flex';
+                // Small delay to allow display block to apply before animating opacity
+                setTimeout(() => btn.style.opacity = '1', 10);
+            } else {
+                btn.style.opacity = '0';
+                setTimeout(() => {
+                    if (mainContent.scrollTop <= 300) btn.style.display = 'none';
+                }, 300); // match transition duration
+            }
+        });
     } else {
         const navEl = document.getElementById('sidebarNav');
         if (navEl) navEl.innerHTML = renderSidebarNavItems(viewName);
@@ -4052,11 +4075,7 @@ function renderCaseDetail(id) {
             </div>
             <div class="case-block-body">${actions}</div>
         </div>` : ''}
-    </div>
-    <button class="fab-up" onclick="document.getElementById('main-content').scrollTo({top:0, behavior:'smooth'})" title="Volver al inicio">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="18 15 12 9 6 15"></polyline></svg>
-        <span class="expand-text">Volver arriba</span>
-    </button>`;
+    </div>`;
 }
 function updateFileZone(inputId, zoneId, nameId) {
     const input = document.getElementById(inputId);
