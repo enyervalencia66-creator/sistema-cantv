@@ -505,32 +505,43 @@ select.input-field option {
     to { transform: scaleX(0); }
 }
 
-/* Expandable Button (Hover) */
-.btn-expandable {
+/* Floating Action Button (Expandable) */
+.fab-up {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 1000;
     display: inline-flex;
     align-items: center;
     justify-content: flex-start;
     border-radius: 50px;
     padding: 0.5rem;
+    background: #ffffff;
+    color: var(--cantv-blue-base);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
     white-space: nowrap;
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
+    cursor: pointer;
 }
-.btn-expandable .expand-text {
+.fab-up:hover {
+    width: 155px;
+    padding: 0.5rem 1.2rem;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+}
+.fab-up .expand-text {
     max-width: 0;
     opacity: 0;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    font-size: 0.8rem;
+    font-size: 0.9rem;
     font-weight: 600;
+    font-family: 'Poppins', sans-serif;
 }
-.btn-expandable:hover {
-    width: 130px;
-    padding: 0.5rem 1rem;
-}
-.btn-expandable:hover .expand-text {
-    max-width: 100px;
+.fab-up:hover .expand-text {
+    max-width: 120px;
     opacity: 1;
-    margin-left: 0.4rem;
+    margin-left: 0.5rem;
 }
