@@ -403,6 +403,16 @@ select.input-field option { background: #ffffff; color: var(--text-primary); }
 }
 .row-context-menu.open { transform: translateX(0); }
 
+/* Custom Table Header Sort Dropdown */
+.table-sort-dropdown { position: relative; display: inline-block; }
+.table-sort-btn { background: transparent; border: none; color: inherit; font-size: inherit; font-weight: 700; font-family: inherit; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; padding: 0.3rem 0.5rem; border-radius: 6px; transition: background 0.2s; white-space: nowrap; margin-left: auto; outline: none; }
+.table-sort-btn:hover { background: rgba(255, 255, 255, 0.1); }
+.table-sort-menu { position: absolute; right: 0; top: calc(100% + 0.3rem); background: #ffffff; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); min-width: 170px; z-index: 9999; overflow: hidden; transform: translateY(8px); opacity: 0; visibility: hidden; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); border: 1px solid rgba(15, 23, 42, 0.08); text-align: left; }
+.table-sort-dropdown.open .table-sort-menu { transform: translateY(0); opacity: 1; visibility: visible; }
+.table-sort-item { padding: 0.65rem 1rem; color: var(--text-primary); font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: background 0.15s, color 0.15s; text-transform: none; letter-spacing: normal; display: block; }
+.table-sort-item:hover { background: var(--cantv-blue-light); color: white; }
+.table-sort-item.active { background: #f1f5f9; color: var(--cantv-blue-base); }
+
 /* Badges */
 .badge { padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.72rem; font-weight: 600; display: inline-flex; border: 1px solid transparent; }
 .badge-low { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
@@ -823,6 +833,9 @@ function closeRowMenu(e) {
 document.addEventListener('click', (e) => {
     if (openRowMenu && !e.target.closest('.row-context-menu')) {
         openRowMenu.classList.remove('open'); openRowMenu = null;
+    }
+    if (!e.target.closest('.table-sort-dropdown')) {
+        document.querySelectorAll('.table-sort-dropdown.open').forEach(el => el.classList.remove('open'));
     }
 });
 function toggleFavItem(type, id) {
@@ -2738,12 +2751,18 @@ function renderSolicitudes() {
         </div>
         <div class="glass-card p-0"><table id="solTable" class="table-container m-0">
             <thead><tr class="table-header"><th>ID</th><th>Asunto</th><th>Estado</th><th>Enviado Por</th><th style="text-align:right">
-                <select onchange="setSort(this.value, 'solicitudes')" style="background:transparent; border:none; color:inherit; outline:none; cursor:pointer; text-transform:none; font-weight:700; letter-spacing:normal;">
-                    <option value="reciente" style="color:#000" ${sortSolicitudes==='reciente'?'selected':''}>▼ Orden: Recientes</option>
-                    <option value="antiguo" style="color:#000" ${sortSolicitudes==='antiguo'?'selected':''}>▲ Orden: Antiguos</option>
-                    <option value="criticidad-desc" style="color:#000" ${sortSolicitudes==='criticidad-desc'?'selected':''}>▼ Orden: Criticidad</option>
-                    <option value="criticidad-asc" style="color:#000" ${sortSolicitudes==='criticidad-asc'?'selected':''}>▲ Orden: Criticidad</option>
-                </select>
+                <div class="table-sort-dropdown" onclick="this.classList.toggle('open'); event.stopPropagation();">
+                    <button class="table-sort-btn">
+                        ${sortSolicitudes==='reciente'?'▼ Recientes':sortSolicitudes==='antiguo'?'▲ Antiguos':sortSolicitudes==='criticidad-desc'?'▼ Criticidad (Alta)':'▲ Criticidad (Baja)'}
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div class="table-sort-menu">
+                        <div class="table-sort-item ${sortSolicitudes==='reciente'?'active':''}" onclick="setSort('reciente', 'solicitudes')">▼ Orden: Recientes</div>
+                        <div class="table-sort-item ${sortSolicitudes==='antiguo'?'active':''}" onclick="setSort('antiguo', 'solicitudes')">▲ Orden: Antiguos</div>
+                        <div class="table-sort-item ${sortSolicitudes==='criticidad-desc'?'active':''}" onclick="setSort('criticidad-desc', 'solicitudes')">▼ Orden: Criticidad</div>
+                        <div class="table-sort-item ${sortSolicitudes==='criticidad-asc'?'active':''}" onclick="setSort('criticidad-asc', 'solicitudes')">▲ Orden: Criticidad</div>
+                    </div>
+                </div>
             </th></tr></thead><tbody>`;
     if(list.length===0) html += `<tr><td colspan="5" class="text-center p-6 text-muted">No hay incidencias en esta categoría</td></tr>`;
     else list.forEach(s => {
@@ -3590,12 +3609,18 @@ function renderCasos() {
 
             let html = `<table id="${tableId}" class="table-container m-0">
                 <thead><tr class="table-header"><th>ID</th><th>Asunto</th><th>Estado</th><th>Responsable</th><th style="text-align:right">
-                    <select onchange="setSort(this.value, 'casos')" style="background:transparent; border:none; color:inherit; outline:none; cursor:pointer; text-transform:none; font-weight:700; letter-spacing:normal;">
-                        <option value="reciente" style="color:#000" ${sortCasos==='reciente'?'selected':''}>▼ Orden: Recientes</option>
-                        <option value="antiguo" style="color:#000" ${sortCasos==='antiguo'?'selected':''}>▲ Orden: Antiguos</option>
-                        <option value="criticidad-desc" style="color:#000" ${sortCasos==='criticidad-desc'?'selected':''}>▼ Orden: Criticidad</option>
-                        <option value="criticidad-asc" style="color:#000" ${sortCasos==='criticidad-asc'?'selected':''}>▲ Orden: Criticidad</option>
-                    </select>
+                    <div class="table-sort-dropdown" onclick="this.classList.toggle('open'); event.stopPropagation();">
+                        <button class="table-sort-btn">
+                            ${sortCasos==='reciente'?'▼ Recientes':sortCasos==='antiguo'?'▲ Antiguos':sortCasos==='criticidad-desc'?'▼ Criticidad (Alta)':'▲ Criticidad (Baja)'}
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </button>
+                        <div class="table-sort-menu">
+                            <div class="table-sort-item ${sortCasos==='reciente'?'active':''}" onclick="setSort('reciente', 'casos')">▼ Orden: Recientes</div>
+                            <div class="table-sort-item ${sortCasos==='antiguo'?'active':''}" onclick="setSort('antiguo', 'casos')">▲ Orden: Antiguos</div>
+                            <div class="table-sort-item ${sortCasos==='criticidad-desc'?'active':''}" onclick="setSort('criticidad-desc', 'casos')">▼ Orden: Criticidad</div>
+                            <div class="table-sort-item ${sortCasos==='criticidad-asc'?'active':''}" onclick="setSort('criticidad-asc', 'casos')">▲ Orden: Criticidad</div>
+                        </div>
+                    </div>
                 </th></tr></thead><tbody>`;
             cases.forEach(c => {
                 const isPinned = (c.anclados || []).includes(currentUser.username);
