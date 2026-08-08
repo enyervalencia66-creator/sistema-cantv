@@ -2545,6 +2545,12 @@ function setSolicitudesTab(tab) {
     solicitudesTab = tab;
     navigate('solicitudes');
 }
+
+let casosBandejaTab = 'accion';
+function setCasosBandejaTab(tab) {
+    casosBandejaTab = tab;
+    navigate('casos');
+}
 function renderSolicitudes() {
     let list = db.solicitudes;
     if (!hasPermission('apruebo_incidencias')) {
@@ -3448,29 +3454,30 @@ function renderCasos() {
             return html + `</tbody></table>`;
         };
 
-        let pendingHtml = '';
+        const tabs = [
+            { key: 'accion', label: 'Requieren tu Acción', data: myCases, showAction: true },
+            { key: 'seguimiento', label: 'En Seguimiento', data: trackedCases, showAction: false }
+        ];
         if (currentUser.role === ROLES.ESP) {
-            pendingHtml = `
-            <div class="page-header" style="align-items: center; margin-top: 2rem; margin-bottom: 1.5rem;">
-                <h1 class="page-title" style="font-size: 1.25rem;">Pendiente por Aprobar (Niveles Superiores)</h1>
-                <input type="text" class="input-field search-input" placeholder="Buscar..." maxlength="50" onkeyup="filterTable('pendCasosTable', this.value)">
-            </div>
-            <div class="glass-card p-0">${renderTable(pendingApprovalCases, false, 'pendCasosTable')}</div>`;
+            tabs.push({ key: 'pendientes', label: 'Pendiente por Aprobar', data: pendingApprovalCases, showAction: false });
         }
+        
+        if (!tabs.some(t => t.key === casosBandejaTab)) casosBandejaTab = 'accion';
+        const currentTab = tabs.find(t => t.key === casosBandejaTab);
 
         return `<div class="view-enter max-w-5xl">
             <div class="page-header" style="align-items: center; margin-bottom: 1.5rem;">
                 <h1 class="page-title">Casos Activos</h1>
-                <input type="text" class="input-field search-input" placeholder="Buscar..." maxlength="50" onkeyup="filterTable('misCasosTable', this.value)">
+                <div class="flex gap-4 items-stretch">
+                    <input type="text" class="input-field search-input" placeholder="Buscar por ID o Asunto..." onkeyup="filterTable('casosBandejaTable', this.value)" maxlength="50">
+                </div>
             </div>
-            <div class="glass-card p-0 mb-8">${renderTable(myCases, true, 'misCasosTable')}</div>
-
-            <div class="page-header" style="align-items: center; margin-top: 2rem; margin-bottom: 1.5rem;">
-                <h1 class="page-title" style="font-size: 1.25rem;">En Seguimiento</h1>
-                <input type="text" class="input-field search-input" placeholder="Buscar..." maxlength="50" onkeyup="filterTable('segCasosTable', this.value)">
+            
+            <div class="flex gap-2 mb-4">
+                ${tabs.map(t => `<button class="btn ${casosBandejaTab === t.key ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="setCasosBandejaTab('${t.key}')">${t.label} <span class="badge" style="margin-left:0.4rem;background:${casosBandejaTab === t.key ? 'rgba(255,255,255,0.25)' : 'var(--glass-bg-strong)'}">${t.data.length}</span></button>`).join('')}
             </div>
-            <div class="glass-card p-0">${renderTable(trackedCases, false, 'segCasosTable')}</div>
-            ${pendingHtml}
+            
+            <div class="glass-card p-0 mb-8">${renderTable(currentTab.data, currentTab.showAction, 'casosBandejaTable')}</div>
         </div>`;
     }
 }
