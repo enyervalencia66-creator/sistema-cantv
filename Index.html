@@ -3863,6 +3863,11 @@ function renderCaseDetail(id) {
                         ${c.sustanciacion.ppt ? renderFileBadge(c.sustanciacion.ppt, c.especialistaAsignado) : ''}
                     </div>
                 </div>` : ''}
+                <div style="margin-top:1.5rem;display:flex;justify-content:flex-end;">
+                    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('main-content').scrollTo({top:0, behavior:'smooth'})" title="Volver al inicio del caso">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><polyline points="18 15 12 9 6 15"></polyline></svg> Volver arriba
+                    </button>
+                </div>
             </div>
         </div>` : ''}
 
