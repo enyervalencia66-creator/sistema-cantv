@@ -2540,6 +2540,13 @@ function toggleFavSol(id) {
     saveDB(); renderSolicitudes();
 }
 
+let sortSolicitudes = 'reciente';
+let sortCasos = 'reciente';
+function setSort(value, type) {
+    if (type === 'solicitudes') { sortSolicitudes = value; navigate('solicitudes'); }
+    else { sortCasos = value; navigate('casos'); }
+}
+
 let solicitudesTab = 'pendientes';
 function setSolicitudesTab(tab) {
     solicitudesTab = tab;
@@ -2583,7 +2590,22 @@ function renderSolicitudes() {
         const aFav = (a.favoritos || []).includes(currentUser.username) ? 1 : 0;
         const bFav = (b.favoritos || []).includes(currentUser.username) ? 1 : 0;
         if (aFav !== bFav) return bFav - aFav;
-        return new Date(b.creadoEl).getTime() - new Date(a.creadoEl).getTime();
+        
+        const valA = (item) => {
+            if (sortSolicitudes.includes('criticidad')) {
+                const c = item.criticidad;
+                if (c === 'Alta') return 3;
+                if (c === 'Media') return 2;
+                if (c === 'Baja') return 1;
+                return 0;
+            }
+            return new Date(item.creadoEl || 0).getTime();
+        };
+        if (sortSolicitudes === 'reciente') return valA(b) - valA(a);
+        if (sortSolicitudes === 'antiguo') return valA(a) - valA(b);
+        if (sortSolicitudes === 'criticidad-desc') return valA(b) - valA(a) || (new Date(b.creadoEl||0).getTime() - new Date(a.creadoEl||0).getTime());
+        if (sortSolicitudes === 'criticidad-asc') return valA(a) - valA(b) || (new Date(b.creadoEl||0).getTime() - new Date(a.creadoEl||0).getTime());
+        return 0;
     });
     const titleLabel = 'Incidencias';
     let html = `<div class="view-enter">
@@ -2591,6 +2613,12 @@ function renderSolicitudes() {
             <h1 class="page-title">${titleLabel}</h1>
             <div class="flex gap-4 items-stretch">
                 <input type="text" class="input-field" placeholder="Buscar por ID o Asunto..." onkeyup="filterTable('solTable', this.value)" maxlength="50">
+                <select class="input-field" style="width: auto;" onchange="setSort(this.value, 'solicitudes')">
+                    <option value="reciente" ${sortSolicitudes==='reciente'?'selected':''}>Más recientes</option>
+                    <option value="antiguo" ${sortSolicitudes==='antiguo'?'selected':''}>Más antiguos</option>
+                    <option value="criticidad-desc" ${sortSolicitudes==='criticidad-desc'?'selected':''}>Criticidad (Alta a Baja)</option>
+                    <option value="criticidad-asc" ${sortSolicitudes==='criticidad-asc'?'selected':''}>Criticidad (Baja a Alta)</option>
+                </select>
                 ${hasPermission('registro_incidencias') ? `<button class="btn btn-primary whitespace-nowrap" onclick="navigate('create-solicitud')">+ Nueva Incidencia</button>` : ''}
             </div>
         </div>
@@ -3420,7 +3448,26 @@ function renderCasos() {
                 const aFav = (a.favoritos || []).includes(currentUser.username) ? 1 : 0;
                 const bFav = (b.favoritos || []).includes(currentUser.username) ? 1 : 0;
                 if (aFav !== bFav) return bFav - aFav;
-                return new Date(b.estadoUpdateMs || 0).getTime() - new Date(a.estadoUpdateMs || 0).getTime();
+                
+                const valA = (item) => {
+                    if (sortCasos.includes('criticidad')) {
+                        let crit = null;
+                        if (item.solicitudRef) {
+                            const sol = db.solicitudes.find(s => s.id == item.solicitudRef);
+                            if (sol) crit = sol.criticidad;
+                        }
+                        if (crit === 'Alta') return 3;
+                        if (crit === 'Media') return 2;
+                        if (crit === 'Baja') return 1;
+                        return 0;
+                    }
+                    return new Date(item.estadoUpdateMs || item.fechaApertura || 0).getTime();
+                };
+                if (sortCasos === 'reciente') return valA(b) - valA(a);
+                if (sortCasos === 'antiguo') return valA(a) - valA(b);
+                if (sortCasos === 'criticidad-desc') return valA(b) - valA(a) || (new Date(b.estadoUpdateMs || b.fechaApertura || 0).getTime() - new Date(a.estadoUpdateMs || a.fechaApertura || 0).getTime());
+                if (sortCasos === 'criticidad-asc') return valA(a) - valA(b) || (new Date(b.estadoUpdateMs || b.fechaApertura || 0).getTime() - new Date(a.estadoUpdateMs || a.fechaApertura || 0).getTime());
+                return 0;
             });
 
             let html = `<table id="${tableId}" class="table-container m-0">
@@ -3470,6 +3517,12 @@ function renderCasos() {
                 <h1 class="page-title">Casos Activos</h1>
                 <div class="flex gap-4 items-stretch">
                     <input type="text" class="input-field search-input" placeholder="Buscar por ID o Asunto..." onkeyup="filterTable('casosBandejaTable', this.value)" maxlength="50">
+                    <select class="input-field" style="width: auto;" onchange="setSort(this.value, 'casos')">
+                        <option value="reciente" ${sortCasos==='reciente'?'selected':''}>Más recientes</option>
+                        <option value="antiguo" ${sortCasos==='antiguo'?'selected':''}>Más antiguos</option>
+                        <option value="criticidad-desc" ${sortCasos==='criticidad-desc'?'selected':''}>Criticidad (Alta a Baja)</option>
+                        <option value="criticidad-asc" ${sortCasos==='criticidad-asc'?'selected':''}>Criticidad (Baja a Alta)</option>
+                    </select>
                 </div>
             </div>
             
