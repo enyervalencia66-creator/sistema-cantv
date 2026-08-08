@@ -1492,8 +1492,13 @@ function navigate(viewName, params = null) {
     }
     else if (viewName === 'casos') mainContent.innerHTML = renderCasos();
     else if (viewName === 'case-detail') {
-        mainContent.innerHTML = renderCaseDetail(params.id);
+        const casoObj = db.casos.find(x => x.id == params.id);
+        if (casoObj && currentUser.role === ROLES.ESP && (casoObj.estado === ESTADOS_CASO.PENDIENTE_COORD || casoObj.estado === ESTADOS_CASO.PENDIENTE_SUPER)) {
+            uiAlert('No tienes permisos para ver este caso aún. Está en revisión de niveles superiores.');
+            return navigate('casos');
+        }
         markNotifsReadForView('case-detail', params.id);
+        mainContent.innerHTML = renderCaseDetail(params.id);
     }
     else if (viewName === 'expedientes') mainContent.innerHTML = renderExpedientes();
     else if (viewName === 'create-persona') mainContent.innerHTML = renderCreatePersona();
@@ -3365,6 +3370,9 @@ function renderCasos() {
         let trackedCases = [];
         
         if (currentUser.role === ROLES.ESP) {
+            // No permitir ver el caso si está en niveles superiores
+            list = list.filter(c => c.estado !== ESTADOS_CASO.PENDIENTE_COORD && c.estado !== ESTADOS_CASO.PENDIENTE_SUPER);
+            
             // Especialista: solo lo asignado a él donde tenga acciones
             myCases = list.filter(c => c.asignadoA === currentUser.username);
             // El resto de sus casos van a seguimiento
