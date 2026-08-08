@@ -574,6 +574,100 @@ input[type="file"]::file-selector-button:hover { background: #d1d5db; }
     .auth-brand-subtitle { font-size: 0.8rem; }
     .auth-form-card { padding: 1.75rem; }
     .auth-brand-footer { display: none; }
+    .auth-brand-footer { display: none; }
+}
+
+/* Undo Toast */
+.undo-toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #1e293b;
+    color: #fff;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    z-index: 9999;
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.undo-toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+.undo-toast .undo-btn {
+    background: transparent;
+    color: #34d399;
+    border: 1px solid rgba(52, 211, 153, 0.3);
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+.undo-toast .undo-btn:hover {
+    background: rgba(52, 211, 153, 0.1);
+    border-color: #34d399;
+}
+.undo-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: #34d399;
+    width: 100%;
+    border-radius: 2px;
+    animation: undo-shrink 5s linear forwards;
+    transform-origin: left;
+}
+@keyframes undo-shrink {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
+}
+
+/* Floating Action Button (Expandable) */
+.fab-up {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 1000;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    border-radius: 50px;
+    padding: 0.5rem;
+    background: #ffffff;
+    color: var(--cantv-blue-base);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    white-space: nowrap;
+    width: 44px;
+    height: 44px;
+    cursor: pointer;
+}
+.fab-up:hover {
+    width: 155px;
+    padding: 0.5rem 1.2rem;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+}
+.fab-up .expand-text {
+    max-width: 0;
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.9rem;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+}
+.fab-up:hover .expand-text {
+    max-width: 120px;
+    opacity: 1;
+    margin-left: 0.5rem;
 }
     </style>
 </head>
