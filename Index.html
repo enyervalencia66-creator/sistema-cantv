@@ -442,6 +442,8 @@ h1, h2, h3 { letter-spacing: -0.01em; color: var(--text-primary); font-weight: 6
 .notif-item.unread { background: rgba(37,99,235,0.18); color: #ffffff; border-left: 3px solid var(--cantv-blue-light); }
 
 .view-enter { animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.tab-enter { animation: tabFadeIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+@keyframes tabFadeIn { 0% { opacity: 0; transform: translateX(-15px); } 100% { opacity: 1; transform: translateX(0); } }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 /* Grid Forms */
@@ -1590,7 +1592,7 @@ function renderSidebarNavItems(viewName) {
     `;
 }
 
-function navigate(viewName, params = null) {
+function navigate(viewName, params = {}, animClass = 'view-enter') {
     isSubmitting = false; // reset any action lock on navigation
     currentView = viewName;
     currentParams = params;
@@ -1673,7 +1675,7 @@ function navigate(viewName, params = null) {
     renderTopbar();
 
     // Reinicia la animación de entrada solo en el contenido (no en todo el layout)
-    mainContent.classList.remove('view-enter');
+    mainContent.className = 'content-area';
     void mainContent.offsetWidth;
 
     if (viewName === 'dashboard') {
@@ -1698,7 +1700,7 @@ function navigate(viewName, params = null) {
     else if (viewName === 'reportes-mensuales') mainContent.innerHTML = renderReportesMensuales();
     else if (viewName === 'admin-users') mainContent.innerHTML = renderAdminUsers();
 
-    mainContent.classList.add('view-enter');
+    if (animClass) mainContent.classList.add(animClass);
 
     // Restore sidebar collapsed state after re-render
     if (sidebarCollapsed) {
@@ -2746,13 +2748,13 @@ function setSort(value, type) {
 let solicitudesTab = 'pendientes';
 function setSolicitudesTab(tab) {
     solicitudesTab = tab;
-    navigate('solicitudes');
+    navigate('solicitudes', {}, 'tab-enter');
 }
 
 let casosBandejaTab = 'accion';
 function setCasosBandejaTab(tab) {
     casosBandejaTab = tab;
-    navigate('casos');
+    navigate('casos', {}, 'tab-enter');
 }
 function renderSolicitudes() {
     let list = db.solicitudes;
@@ -2824,8 +2826,8 @@ function renderSolicitudes() {
             <thead><tr class="table-header"><th style="width: 80px;">ID</th><th style="min-width: 180px; max-width: 350px; overflow-wrap: break-word;">Asunto</th><th style="width: 120px; min-width: 110px; text-align: center;">Estado</th><th>Enviado Por</th><th style="text-align:right">
                 <div class="table-sort-dropdown" onclick="this.classList.toggle('open'); event.stopPropagation();">
                     <button class="table-sort-btn" style="display: flex; align-items: center; gap: 4px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cantv-fuchsia)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
                         ${sortSolicitudes==='reciente'?'Recientes':sortSolicitudes==='antiguo'?'Antiguos':sortSolicitudes==='criticidad-desc'?'Criticidad (Alta)':'Criticidad (Baja)'}
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cantv-fuchsia)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
                     </button>
                     <div class="table-sort-menu">
                         <div class="table-sort-item ${sortSolicitudes==='reciente'?'active':''}" onclick="setSort('reciente', 'solicitudes')" style="display: flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg> Orden: Recientes</div>
@@ -3714,8 +3716,8 @@ function renderCasos() {
                 <thead><tr class="table-header"><th style="width: 80px;">ID</th><th style="min-width: 180px; max-width: 350px; overflow-wrap: break-word;">Asunto</th><th style="width: 120px; min-width: 110px; text-align: center;">Estado</th><th>Responsable</th><th style="text-align:right">
                     <div class="table-sort-dropdown" onclick="this.classList.toggle('open'); event.stopPropagation();">
                         <button class="table-sort-btn" style="display: flex; align-items: center; gap: 4px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cantv-fuchsia)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
                             ${sortCasos==='reciente'?'Recientes':sortCasos==='antiguo'?'Antiguos':sortCasos==='criticidad-desc'?'Criticidad (Alta)':'Criticidad (Baja)'}
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cantv-fuchsia)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
                         </button>
                         <div class="table-sort-menu">
                             <div class="table-sort-item ${sortCasos==='reciente'?'active':''}" onclick="setSort('reciente', 'casos')" style="display: flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg> Orden: Recientes</div>
