@@ -441,10 +441,10 @@ h1, h2, h3 { letter-spacing: -0.01em; color: var(--text-primary); font-weight: 6
 .notif-item:hover { background: rgba(255,255,255,0.06); color: #ffffff; }
 .notif-item.unread { background: rgba(37,99,235,0.18); color: #ffffff; border-left: 3px solid var(--cantv-blue-light); }
 
-.view-enter { animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.view-enter { animation: fadeIn 0.2s ease-out forwards; }
 .tab-enter { animation: tabFadeIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
 @keyframes tabFadeIn { 0% { opacity: 0; transform: translateX(-15px); } 100% { opacity: 1; transform: translateX(0); } }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 /* Grid Forms */
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
