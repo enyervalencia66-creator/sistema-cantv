@@ -129,6 +129,25 @@ async function sendResetEmail(toEmail, token) {
     await sendEmail(toEmail, 'Código de recuperación de contraseña - Sistema CANTV', buildResetEmailHtml(token));
 }
 
+async function sendEmailChangeCode(toEmail, token) {
+    await sendEmail(toEmail, 'Verificación de cambio de correo - Sistema CANTV', `
+<div style="background:#eef2f7;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;">
+  <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.08);">
+    <div style="background:linear-gradient(90deg,#2563eb,#E5007E);padding:28px 32px;text-align:center;">
+      <span style="color:#ffffff;font-size:26px;font-weight:800;letter-spacing:-1px;font-style:italic;">cantv</span>
+    </div>
+    <div style="padding:32px;">
+      <h1 style="margin:0 0 16px;font-size:20px;color:#1e293b;text-align:center;">Verificación de cambio de correo</h1>
+      <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.5;">Ingresa el siguiente código de 6 dígitos en la aplicación para confirmar tu nueva dirección de correo electrónico. El código expirará en 2 minutos.</p>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px;text-align:center;margin-bottom:20px;">
+        <span style="font-size:32px;font-weight:700;letter-spacing:6px;color:#0f172a;">${token}</span>
+      </div>
+      <p style="margin:0;font-size:13px;color:#64748b;text-align:center;">Si no solicitaste este cambio, ignora este mensaje.</p>
+    </div>
+  </div>
+</div>`);
+}
+
 // Misma plantilla visual que el correo de recuperación, pero para el mensaje libre de una
 // notificación del sistema (nueva incidencia, aprobación, rechazo, asignación, etc.).
 function buildNotificationEmailHtml(message, appUrl, senderName) {
@@ -567,6 +586,55 @@ app.post('/api/auth/reset/confirm', async (req, res) => {
     await supabase.from('password_reset_tokens').delete().eq('email', email);
     await prefetchData();
     res.json({ success: true });
+});
+
+// 5. Email Change Request
+app.post('/api/user/email/request', authenticate, async (req, res) => {
+    const { newEmail } = req.body;
+    const { username } = req.user;
+    
+    if (!newEmail) return res.status(400).json({ error: 'Debes proporcionar un nuevo correo.' });
+    
+    const { data: existing, error: existErr } = await supabase.from('users').select('id').eq('email', newEmail);
+    if (existing && existing.length > 0) return res.status(400).json({ error: 'Este correo ya está en uso por otra cuenta.' });
+
+    const token = Math.floor(100000 + Math.random() * 900000).toString();
+
+    const { error: insertErr } = await supabase.from('password_reset_tokens').upsert({
+        email: newEmail, token: token, created_at: new Date().toISOString()
+    });
+    if (insertErr) return res.status(500).json({ error: 'Error al generar el token' });
+
+    try {
+        await sendEmailChangeCode(newEmail, token);
+    } catch (emailErr) {
+        console.error('sendEmailChangeCode error:', emailErr);
+        return res.status(502).json({ error: 'No se pudo enviar el correo. Intenta de nuevo en unos minutos.' });
+    }
+
+    res.json({ success: true, email: newEmail });
+});
+
+// 6. Email Change Confirm
+app.post('/api/user/email/confirm', authenticate, async (req, res) => {
+    const { newEmail, token } = req.body;
+    const { username } = req.user;
+
+    const { data: tokens, error } = await supabase.from('password_reset_tokens').select('*').eq('email', newEmail).eq('token', token);
+    if (error || tokens.length === 0) return res.status(400).json({ error: 'Código inválido o expirado' });
+
+    const tokenAgeMs = Date.now() - new Date(tokens[0].created_at).getTime();
+    if (tokenAgeMs > RESET_TOKEN_TTL_MS) {
+        await supabase.from('password_reset_tokens').delete().eq('email', newEmail);
+        return res.status(400).json({ error: 'El código expiró (vale por 2 minutos). Solicita uno nuevo.' });
+    }
+
+    const { error: updateErr } = await supabase.from('users').update({ email: newEmail }).eq('username', username);
+    if (updateErr) return res.status(500).json({ error: 'Error al actualizar el correo' });
+
+    await supabase.from('password_reset_tokens').delete().eq('email', newEmail);
+    await prefetchData(); 
+    res.json({ success: true, email: newEmail });
 });
 
 // Helper to upload base64 to Supabase Storage
