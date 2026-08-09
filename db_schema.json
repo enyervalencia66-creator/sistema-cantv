@@ -90,7 +90,8 @@
     "line_management_id",
     "created_at",
     "update_at",
-    "p00"
+    "p00",
+    "cargo_manual"
   ],
   "documents": [
     "id_documento",

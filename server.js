@@ -384,10 +384,15 @@ app.post('/api/db/:table', authenticate, async (req, res) => {
 
 app.put('/api/db/:table/:idColumn/:idValue', authenticate, async (req, res) => {
     try {
-        // Igual que en el POST genérico: si esta actualización toca la contraseña de un usuario
-        // (cambio propio, reseteo de admin, edición), se hashea antes de guardarla.
-        if (req.params.table === 'users' && req.body.password) {
-            req.body.password = await bcrypt.hash(req.body.password, BCRYPT_ROUNDS);
+        if (req.params.table === 'users') {
+            const isEditingSelf = String(req.user.id) === String(req.params.idValue);
+            const isAdmin = req.user.role === 'admin';
+            if (!isEditingSelf && !isAdmin) {
+                return res.status(403).json({ error: 'Permisos insuficientes para modificar este usuario.' });
+            }
+            if (req.body.password) {
+                req.body.password = await bcrypt.hash(req.body.password, BCRYPT_ROUNDS);
+            }
         }
         const { data, error } = await supabase.from(req.params.table).update(req.body).eq(req.params.idColumn, req.params.idValue).select();
         if (error) throw error;
@@ -402,6 +407,30 @@ app.put('/api/db/:table/:idColumn/:idValue', authenticate, async (req, res) => {
 // res.ok) y el registro nunca se borraba realmente de la base de datos.
 app.delete('/api/db/:table', authenticate, async (req, res) => {
     try {
+        // WORKAROUND: La base de datos no tiene ON DELETE CASCADE en las foreign keys.
+        // Interceptamos borrados de 'personas' e 'investigaciones' para borrar manualmente
+        // los hijos primero y evitar el Error 500 (Violación de Clave Foránea).
+        if (req.params.table === 'personas') {
+            const idValues = Object.entries(req.query).filter(([k, v]) => k === 'id_persona' && typeof v === 'string' && v.startsWith('eq.')).map(([k, v]) => v.slice(3));
+            if (idValues.length > 0) {
+                for (const id of idValues) {
+                    await supabase.from('documents').delete().eq('persona_id', id);
+                    await supabase.from('estudios').delete().eq('persona_id', id);
+                    await supabase.from('referencias_laborales').delete().eq('persona_id', id);
+                    await supabase.from('investigacion_persona').delete().eq('persona_id', id);
+                }
+            }
+        } else if (req.params.table === 'investigaciones') {
+            const idValues = Object.entries(req.query).filter(([k, v]) => k === 'id_investigacion' && typeof v === 'string' && v.startsWith('eq.')).map(([k, v]) => v.slice(3));
+            if (idValues.length > 0) {
+                for (const id of idValues) {
+                    await supabase.from('casos_estado_historial').delete().eq('investigacion_id', id);
+                    await supabase.from('casos_comentarios').delete().eq('investigacion_id', id);
+                    await supabase.from('investigacion_persona').delete().eq('investigacion_id', id);
+                }
+            }
+        }
+
         let query = supabase.from(req.params.table).delete();
         for (const [key, rawValue] of Object.entries(req.query)) {
             const value = typeof rawValue === 'string' && rawValue.startsWith('eq.') ? rawValue.slice(3) : rawValue;

@@ -757,7 +757,17 @@ input[type="file"]::file-selector-button:hover { background: #d1d5db; }
                 options = { ...options, headers: { ...(options.headers || {}), 'Authorization': `Bearer ${token}` } };
             }
         }
-        return nativeFetch(input, options);
+        return nativeFetch(input, options).then(res => {
+            if ((res.status === 401 || res.status === 403) && isApi && !isPublicAuth) {
+                if (typeof logout === 'function') {
+                    const loginOverlay = document.getElementById('loginOverlay');
+                    if (!loginOverlay || loginOverlay.style.display === 'none') {
+                        logout(true); // Expulsar por sesión expirada
+                    }
+                }
+            }
+            return res;
+        });
     };
 })();
 
@@ -1373,6 +1383,7 @@ async function initDB() {
                 return {
                     id: p.id_persona || p.cedulas,
                     p00: p.p00,
+                    // Mapeamos 'cedulas' (plural en BD) a 'cedula' (singular en frontend) para consistencia
                     cedula: p.cedulas,
                     nacionalidad: p.nacionalidad,
                     nombres: p.nombres,
@@ -4865,7 +4876,11 @@ async function submitPersona(e) {
 
     const isExterno = document.getElementById('perTipo').value === 'Externo' || document.getElementById('perTipo').value === 'Contratista';
     let posId = document.getElementById('perPos').value || null;
-    if (isExterno) posId = null; // Evitar pasar texto (ej. 'Vigilante') a la BD porque position_id es numérico
+    let cargoManual = null;
+    if (isExterno) {
+        cargoManual = posId;
+        posId = null; // Evitar pasar texto (ej. 'Vigilante') a la BD porque position_id es numérico
+    }
 
     const payload = {
         p00: p00,
@@ -4877,6 +4892,7 @@ async function submitPersona(e) {
         estatus: document.getElementById('perEstatus').value,
         coordenadas: document.getElementById('perCoord').value.trim() || null,
         position_id: posId,
+        cargo_manual: cargoManual,
         region_id: document.getElementById('perReg').value || null,
         unit_id: isExterno ? null : (document.getElementById('perUni').value || null),
         general_management_id: isExterno ? null : (document.getElementById('perGen').value || null),
