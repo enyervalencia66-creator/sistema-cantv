@@ -1013,7 +1013,7 @@ function waitForUndo(msg) {
         sysUndoToast.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
                 <span>${msg}</span>
-                <button class="btn-undo" onclick="cancelUndo()">Deshacer</button>
+                <button class="undo-btn" onclick="cancelUndo()">Deshacer</button>
             </div>
             <div class="undo-progress"></div>
         `;
@@ -4863,6 +4863,10 @@ async function submitPersona(e) {
     if (!lockAction(btn, 'Guardando...')) return;
     try { await waitForUndo("Guardando expediente..."); } catch(err) { unlockAction(btn); return; }
 
+    const isExterno = document.getElementById('perTipo').value === 'Externo' || document.getElementById('perTipo').value === 'Contratista';
+    let posId = document.getElementById('perPos').value || null;
+    if (isExterno) posId = null; // Evitar pasar texto (ej. 'Vigilante') a la BD porque position_id es numérico
+
     const payload = {
         p00: p00,
         cedulas: ced,
@@ -4872,11 +4876,11 @@ async function submitPersona(e) {
         tipos: document.getElementById('perTipo').value,
         estatus: document.getElementById('perEstatus').value,
         coordenadas: document.getElementById('perCoord').value.trim() || null,
-        position_id: document.getElementById('perPos').value || null,
+        position_id: posId,
         region_id: document.getElementById('perReg').value || null,
-        unit_id: document.getElementById('perUni').value || null,
-        general_management_id: document.getElementById('perGen').value || null,
-        line_management_id: document.getElementById('perLin').value || null
+        unit_id: isExterno ? null : (document.getElementById('perUni').value || null),
+        general_management_id: isExterno ? null : (document.getElementById('perGen').value || null),
+        line_management_id: isExterno ? null : (document.getElementById('perLin').value || null)
     };
     
     try {
