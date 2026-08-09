@@ -5472,7 +5472,9 @@ function initializeSelect(select) {
     
     const updateTriggerText = () => {
         const selectedOpt = select.options[select.selectedIndex];
-        triggerInput.value = selectedOpt ? selectedOpt.text : 'Seleccione...';
+        const text = selectedOpt ? selectedOpt.text : 'Seleccione...';
+        triggerInput.value = text;
+        triggerInput.placeholder = text;
     };
     updateTriggerText();
 
@@ -5559,7 +5561,7 @@ function initializeSelect(select) {
     });
     
     triggerInput.addEventListener('focus', () => {
-        triggerInput.select(); // Select all text so typing immediately overwrites it
+        triggerInput.value = ''; // clear text so they can type freely
         buildOptions(''); // Show all options initially on focus
         document.querySelectorAll('.custom-select-options').forEach(m => m.style.display = 'none');
         optionsMenu.style.display = 'block';
