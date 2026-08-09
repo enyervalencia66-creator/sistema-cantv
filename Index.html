@@ -5566,6 +5566,10 @@ function initializeSelect(select) {
         document.querySelectorAll('.custom-select-options').forEach(m => m.style.display = 'none');
         optionsMenu.style.display = 'block';
     });
+    
+    triggerInput.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
 
     triggerInput.addEventListener('blur', () => {
         // We delay the blur action so the click on an option registers first
