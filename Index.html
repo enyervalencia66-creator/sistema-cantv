@@ -722,7 +722,7 @@ input[type="file"]::file-selector-button:hover { background: #d1d5db; }
             <input type="hidden" id="refPersonaId">
             <div><label class="text-xs text-secondary">Empresa / Contacto</label><input type="text" id="refContacto" class="input-field w-full" required minlength="3" maxlength="100"></div>
             <div class="flex gap-2">
-                <div class="w-1/2"><label class="text-xs text-secondary">Teléfono</label><input type="text" id="refTelefono" class="input-field w-full" required pattern="^\+?\d{10,15}$" title="El teléfono debe tener entre 10 y 15 dígitos numéricos" maxlength="15"></div>
+                <div class="w-1/2"><label class="text-xs text-secondary">Teléfono</label><input type="text" id="refTelefono" class="input-field w-full" required pattern="[+]?[0-9]{10,15}" title="El teléfono debe tener entre 10 y 15 dígitos numéricos" maxlength="15"></div>
                 <div class="w-1/2"><label class="text-xs text-secondary">Salario (Opcional)</label><input type="text" id="refSalario" class="input-field w-full" maxlength="20"></div>
             </div>
             <div class="flex gap-2">
@@ -4705,16 +4705,16 @@ function renderCreatePersona() {
                                 </select>
                             </div>
                             <div class="form-group"><label class="form-label">Cédula de Identidad <span class="text-fuchsia">*</span></label>
-                                <input type="text" id="perCedula" class="input-field" placeholder="12345678" required pattern="^\d{7,10}$" title="Ingrese solo números (7 a 10 dígitos)">
+                                <input type="text" id="perCedula" class="input-field" placeholder="12345678" required pattern="[0-9]{7,10}" title="Ingrese solo números (7 a 10 dígitos)">
                             </div>
                         </div>
                     </div>
                     <div class="form-grid">
                         <div class="form-group"><label class="form-label">Nombres <span class="text-fuchsia">*</span></label>
-                            <input type="text" id="perNombres" class="input-field" placeholder="Ej: Juan Carlos" required minlength="3" maxlength="50" pattern="^[a-zA-ZÁÉÍÓÚáéíóúÑñ\s]+$" title="Ingrese solo letras">
+                            <input type="text" id="perNombres" class="input-field" placeholder="Ej: Juan Carlos" required minlength="3" maxlength="50" pattern="[a-zA-ZÁÉÍÓÚáéíóúÑñ ]+" title="Ingrese solo letras">
                         </div>
                         <div class="form-group"><label class="form-label">Apellidos <span class="text-fuchsia">*</span></label>
-                            <input type="text" id="perApellidos" class="input-field" placeholder="Ej: Pérez Rodríguez" required minlength="3" maxlength="50" pattern="^[a-zA-ZÁÉÍÓÚáéíóúÑñ\s]+$" title="Ingrese solo letras">
+                            <input type="text" id="perApellidos" class="input-field" placeholder="Ej: Pérez Rodríguez" required minlength="3" maxlength="50" pattern="[a-zA-ZÁÉÍÓÚáéíóúÑñ ]+" title="Ingrese solo letras">
                         </div>
                     </div>
                 </div>
