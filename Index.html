@@ -2740,21 +2740,44 @@ function toggleFavSol(id) {
 
 let sortSolicitudes = 'reciente';
 let sortCasos = 'reciente';
+function updateTabView(viewName, renderFunc) {
+    if (currentView === viewName) {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = renderFunc();
+        const currentTabs = document.querySelector('.tabs-wrapper');
+        const newTabs = tempDiv.querySelector('.tabs-wrapper');
+        if (currentTabs && newTabs) currentTabs.innerHTML = newTabs.innerHTML;
+        const currentTableWrap = document.querySelector('.table-container')?.parentElement;
+        const newTableWrap = tempDiv.querySelector('.table-container')?.parentElement;
+        if (currentTableWrap && newTableWrap) {
+            currentTableWrap.classList.add('tab-enter');
+            currentTableWrap.style.animation = 'none';
+            void currentTableWrap.offsetWidth;
+            currentTableWrap.style.animation = '';
+            currentTableWrap.innerHTML = newTableWrap.innerHTML;
+        } else {
+            document.getElementById('main-content').innerHTML = tempDiv.innerHTML;
+        }
+    } else {
+        navigate(viewName, {}, 'tab-enter');
+    }
+}
+
 function setSort(value, type) {
-    if (type === 'solicitudes') { sortSolicitudes = value; navigate('solicitudes'); }
-    else { sortCasos = value; navigate('casos'); }
+    if (type === 'solicitudes') { sortSolicitudes = value; updateTabView('solicitudes', renderSolicitudes); }
+    else { sortCasos = value; updateTabView('casos', renderCasos); }
 }
 
 let solicitudesTab = 'pendientes';
 function setSolicitudesTab(tab) {
     solicitudesTab = tab;
-    navigate('solicitudes', {}, 'tab-enter');
+    updateTabView('solicitudes', renderSolicitudes);
 }
 
 let casosBandejaTab = 'accion';
 function setCasosBandejaTab(tab) {
     casosBandejaTab = tab;
-    navigate('casos', {}, 'tab-enter');
+    updateTabView('casos', renderCasos);
 }
 function renderSolicitudes() {
     let list = db.solicitudes;
