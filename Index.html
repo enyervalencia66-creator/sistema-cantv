@@ -2825,7 +2825,7 @@ function renderSolicitudes() {
                 <div class="table-sort-dropdown" onclick="this.classList.toggle('open'); event.stopPropagation();">
                     <button class="table-sort-btn" style="display: flex; align-items: center; gap: 4px;">
                         ${sortSolicitudes==='reciente'?'Recientes':sortSolicitudes==='antiguo'?'Antiguos':sortSolicitudes==='criticidad-desc'?'Criticidad (Alta)':'Criticidad (Baja)'}
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:4px;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
                     </button>
                     <div class="table-sort-menu">
                         <div class="table-sort-item ${sortSolicitudes==='reciente'?'active':''}" onclick="setSort('reciente', 'solicitudes')" style="display: flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg> Orden: Recientes</div>
@@ -3710,7 +3710,7 @@ function renderCasos() {
                     <div class="table-sort-dropdown" onclick="this.classList.toggle('open'); event.stopPropagation();">
                         <button class="table-sort-btn" style="display: flex; align-items: center; gap: 4px;">
                             ${sortCasos==='reciente'?'Recientes':sortCasos==='antiguo'?'Antiguos':sortCasos==='criticidad-desc'?'Criticidad (Alta)':'Criticidad (Baja)'}
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:4px;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:4px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
                         </button>
                         <div class="table-sort-menu">
                             <div class="table-sort-item ${sortCasos==='reciente'?'active':''}" onclick="setSort('reciente', 'casos')" style="display: flex; align-items: center; gap: 6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg> Orden: Recientes</div>
