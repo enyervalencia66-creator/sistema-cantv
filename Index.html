@@ -4669,16 +4669,53 @@ function toggleCargoInput(tipo) {
     const sel = document.getElementById('perPosSelect');
     const inp = document.getElementById('perPosInput');
     const hidden = document.getElementById('perPos');
+    
+    const perGen = document.getElementById('perGen');
+    const perLin = document.getElementById('perLin');
+    const perUni = document.getElementById('perUni');
+
     if (!sel || !inp || !hidden) return;
+    
+    const toggleField = (el, hide) => {
+        if(!el) return;
+        const wrapper = el.closest('.custom-select-wrapper') || el.closest('.form-group.full-width');
+        if (wrapper) wrapper.style.display = hide ? 'none' : 'block';
+        if (hide) {
+            el.value = '';
+            el.removeAttribute('required');
+            // update custom select text visually
+            const textSpan = wrapper.querySelector('.custom-select-text');
+            if(textSpan) textSpan.value = 'Seleccione...';
+        } else {
+            el.setAttribute('required', 'true');
+        }
+    };
+
     const selWrapper = sel.closest('.custom-select-wrapper') || sel;
     if (tipo === 'Externo' || tipo === 'Contratista') {
         selWrapper.style.display = 'none';
+        sel.removeAttribute('required');
+        sel.value = '';
+        
         inp.style.display = 'block';
+        inp.setAttribute('required', 'true');
         hidden.value = inp.value;
+        
+        toggleField(perGen, true);
+        toggleField(perLin, true);
+        toggleField(perUni, true);
     } else {
         selWrapper.style.display = 'block';
+        sel.setAttribute('required', 'true');
+        
         inp.style.display = 'none';
+        inp.removeAttribute('required');
+        inp.value = '';
         hidden.value = sel.value;
+        
+        toggleField(perGen, false);
+        toggleField(perLin, false);
+        toggleField(perUni, false);
     }
 }
 
@@ -4755,24 +4792,24 @@ function renderCreatePersona() {
                                 <option value="Jubilado">Jubilado</option>
                             </select>
                         </div>
-                        <div class="form-group"><label class="form-label">Cargo (Posición)</label>
+                        <div class="form-group"><label class="form-label">Cargo (Posición) <span class="text-fuchsia">*</span></label>
                             <div id="cargoContainer">
-                                <select id="perPosSelect" class="input-field" onchange="document.getElementById('perPos').value = this.value"><option value="">Seleccione...</option>${posOpts}</select>
+                                <select id="perPosSelect" class="input-field" required onchange="document.getElementById('perPos').value = this.value"><option value="">Seleccione...</option>${posOpts}</select>
                                 <input type="text" id="perPosInput" class="input-field" placeholder="Ingrese el cargo" style="display: none;" oninput="document.getElementById('perPos').value = this.value">
                                 <input type="hidden" id="perPos" value="">
                             </div>
                         </div>
-                        <div class="form-group"><label class="form-label">Región</label>
-                            <select id="perReg" class="input-field"><option value="">Seleccione...</option>${regOpts}</select>
+                        <div class="form-group"><label class="form-label">Región <span class="text-fuchsia">*</span></label>
+                            <select id="perReg" class="input-field" required><option value="">Seleccione...</option>${regOpts}</select>
                         </div>
-                        <div class="form-group full-width"><label class="form-label">Gerencia General</label>
-                            <select id="perGen" class="input-field"><option value="">Seleccione...</option>${genOpts}</select>
+                        <div class="form-group full-width"><label class="form-label">Gerencia General <span class="text-fuchsia">*</span></label>
+                            <select id="perGen" class="input-field" required><option value="">Seleccione...</option>${genOpts}</select>
                         </div>
-                        <div class="form-group full-width"><label class="form-label">Gerencia de Línea</label>
-                            <select id="perLin" class="input-field"><option value="">Seleccione...</option>${linOpts}</select>
+                        <div class="form-group full-width"><label class="form-label">Gerencia de Línea <span class="text-fuchsia">*</span></label>
+                            <select id="perLin" class="input-field" required><option value="">Seleccione...</option>${linOpts}</select>
                         </div>
-                        <div class="form-group full-width"><label class="form-label">Unidad / Departamento</label>
-                            <select id="perUni" class="input-field"><option value="">Seleccione...</option>${uniOpts}</select>
+                        <div class="form-group full-width"><label class="form-label">Unidad / Departamento <span class="text-fuchsia">*</span></label>
+                            <select id="perUni" class="input-field" required><option value="">Seleccione...</option>${uniOpts}</select>
                         </div>
                     </div>
                 </div>
@@ -4986,9 +5023,22 @@ function validarFormulario(form) {
     else if (invalid.validity.typeMismatch) mensaje = `${label} tiene un formato inválido.`;
     else mensaje = invalid.validationMessage || `${label} es inválido.`;
 
-    invalid.style.borderColor = 'var(--status-high)';
-    invalid.focus();
-    if (invalid.scrollIntoView) invalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (invalid.tagName === 'SELECT' && invalid.dataset.customized) {
+        const wrapper = invalid.closest('.custom-select-wrapper');
+        if (wrapper) {
+            const trigger = wrapper.querySelector('.custom-select-trigger');
+            if (trigger) {
+                trigger.style.borderColor = 'var(--status-high)';
+                trigger.style.boxShadow = '0 0 0 3px rgba(239,68,68,0.18)';
+            }
+            if (wrapper.scrollIntoView) wrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    } else {
+        invalid.style.borderColor = 'var(--status-high)';
+        invalid.focus();
+        if (invalid.scrollIntoView) invalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
     showToast(mensaje, 'warning');
     return false;
 }
@@ -5599,6 +5649,8 @@ function initializeSelect(select) {
     select.addEventListener('change', () => {
         updateTriggerText();
         buildOptions();
+        trigger.style.borderColor = '';
+        trigger.style.boxShadow = '';
     });
 }
 
