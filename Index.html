@@ -4876,10 +4876,34 @@ async function submitPersona(e) {
 
     const isExterno = document.getElementById('perTipo').value === 'Externo' || document.getElementById('perTipo').value === 'Contratista';
     let posId = document.getElementById('perPos').value || null;
-    let cargoManual = null;
-    if (isExterno) {
-        cargoManual = posId;
-        posId = null; // Evitar pasar texto (ej. 'Vigilante') a la BD porque position_id es numérico
+    
+    if (isExterno && posId) {
+        const textTyped = posId.trim().toLowerCase();
+        const existingPos = db.positions.find(p => p.description.toLowerCase() === textTyped);
+        if (existingPos) {
+            posId = existingPos.id_posicion;
+        } else {
+            try {
+                const posRes = await fetch('/api/db/positions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ description: posId.trim() })
+                });
+                if (posRes.ok) {
+                    const posData = await posRes.json();
+                    if (posData.data && posData.data[0]) {
+                        posId = posData.data[0].id_posicion;
+                        db.positions.push({ id_posicion: posId, description: posData.data[0].description });
+                    }
+                } else {
+                    unlockAction(btn);
+                    return showToast('Error al registrar el nuevo cargo.', 'error');
+                }
+            } catch(e) {
+                unlockAction(btn);
+                return showToast('Error de red al registrar el cargo.', 'error');
+            }
+        }
     }
 
     const payload = {
@@ -4892,7 +4916,6 @@ async function submitPersona(e) {
         estatus: document.getElementById('perEstatus').value,
         coordenadas: document.getElementById('perCoord').value.trim() || null,
         position_id: posId,
-        cargo_manual: cargoManual,
         region_id: document.getElementById('perReg').value || null,
         unit_id: isExterno ? null : (document.getElementById('perUni').value || null),
         general_management_id: isExterno ? null : (document.getElementById('perGen').value || null),

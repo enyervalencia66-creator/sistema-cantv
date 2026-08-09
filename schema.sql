@@ -111,7 +111,6 @@ CREATE TABLE public.personas (
   created_at timestamp without time zone DEFAULT now(),
   update_at timestamp without time zone DEFAULT now(),
   p00 text UNIQUE,
-  cargo_manual character varying,
   CONSTRAINT personas_pkey PRIMARY KEY (id_persona),
   CONSTRAINT personas_position_id_fkey FOREIGN KEY (position_id) REFERENCES public.positions(id_posicion),
   CONSTRAINT personas_region_id_fkey FOREIGN KEY (region_id) REFERENCES public.regions(id_region),
