@@ -1878,44 +1878,49 @@ async function login(e) {
 function showUserProfile() {
     const u = currentUser;
     const modalHTML = `
-        <div class="text-center mb-4">
-            <div style="width: 64px; height: 64px; flex-shrink: 0; background:var(--sidebar-gradient); color: #ffffff; box-shadow: 0 4px 14px rgba(37,99,235,0.3); border-radius: 50%; margin: 0 auto 0.75rem auto; display: flex; align-items: center; justify-content: center; font-size: 1.75rem; font-weight: bold;">
-                ${u.name.charAt(0).toUpperCase()}
+        <div class="flex flex-col sm:flex-row gap-6 items-center sm:items-stretch">
+            <div class="flex-shrink-0 flex flex-col items-center justify-center text-center" style="width: 160px;">
+                <div style="width: 80px; height: 80px; flex-shrink: 0; background:var(--sidebar-gradient); color: #ffffff; box-shadow: 0 4px 14px rgba(37,99,235,0.3); border-radius: 50%; margin: 0 auto 1rem auto; display: flex; align-items: center; justify-content: center; font-size: 2.25rem; font-weight: bold;">
+                    ${u.name.charAt(0).toUpperCase()}
+                </div>
+                <h2 class="text-xl font-bold" style="margin-bottom: 0.25rem; line-height: 1.2;">${u.name}</h2>
+                <p class="text-secondary text-sm">@${u.username}</p>
             </div>
-            <h2 class="text-xl font-bold" style="margin-bottom: 0;">${u.name}</h2>
-            <p class="text-secondary text-sm">@${u.username}</p>
-        </div>
-        <div class="glass-card mb-4" style="background: #f8fafc; padding: 1.25rem;">
-            <div class="form-grid" style="text-align: left; gap: 0.75rem;">
-                <div style="grid-column: span 1;">
-                    <div style="margin-bottom: 0.15rem;"><span style="color: #64748b; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Correo Electrónico</span></div>
-                    <div style="font-size: 0.9rem; font-weight: 600; color: #1e293b; word-break: break-all;">${u.email || 'No registrado'}</div>
+            
+            <div class="flex-1 w-full flex flex-col">
+                <div class="glass-card mb-4" style="background: #f8fafc; padding: 1.25rem; flex-grow: 1;">
+                    <div class="form-grid" style="text-align: left; gap: 0.75rem;">
+                        <div style="grid-column: span 1;">
+                            <div style="margin-bottom: 0.15rem;"><span style="color: #64748b; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Correo Electrónico</span></div>
+                            <div style="font-size: 0.9rem; font-weight: 600; color: #1e293b; word-break: break-all;">${u.email || 'No registrado'}</div>
+                        </div>
+                        <div style="grid-column: span 1;">
+                            <div style="margin-bottom: 0.15rem;"><span style="color: #64748b; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Teléfono</span></div>
+                            <div style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${u.telefono || 'No registrado'}</div>
+                        </div>
+                        <div style="grid-column: span 1;">
+                            <div style="margin-bottom: 0.15rem;"><span style="color: #64748b; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Rol en Sistema</span></div>
+                            <div style="font-size: 0.9rem; font-weight: 600; color: #1e293b; text-transform: capitalize;">${u.role}</div>
+                        </div>
+                        <div style="grid-column: span 1;">
+                            <div style="margin-bottom: 0.15rem;"><span style="color: #64748b; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Estatus</span></div>
+                            <div><span class="badge badge-low" style="text-transform: capitalize;">${u.estado || 'activo'}</span></div>
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <div style="margin-bottom: 0.15rem;"><span style="color: #64748b; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Región Asignada</span></div>
+                            <div style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${u.region || 'Nacional'}</div>
+                        </div>
+                    </div>
                 </div>
-                <div style="grid-column: span 1;">
-                    <div style="margin-bottom: 0.15rem;"><span style="color: #64748b; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Teléfono</span></div>
-                    <div style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${u.telefono || 'No registrado'}</div>
-                </div>
-                <div style="grid-column: span 1;">
-                    <div style="margin-bottom: 0.15rem;"><span style="color: #64748b; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Rol en Sistema</span></div>
-                    <div style="font-size: 0.9rem; font-weight: 600; color: #1e293b; text-transform: capitalize;">${u.role}</div>
-                </div>
-                <div style="grid-column: span 1;">
-                    <div style="margin-bottom: 0.15rem;"><span style="color: #64748b; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Estatus</span></div>
-                    <div><span class="badge badge-low" style="text-transform: capitalize;">${u.estado || 'activo'}</span></div>
-                </div>
-                <div style="grid-column: span 2;">
-                    <div style="margin-bottom: 0.15rem;"><span style="color: #64748b; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Región Asignada</span></div>
-                    <div style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${u.region || 'Nacional'}</div>
+                <div class="flex gap-2">
+                    <button class="btn btn-secondary flex-1 text-sm" onclick="modalCambiarCorreoRequest()">Cambiar Correo</button>
+                    <button class="btn btn-secondary flex-1 text-sm" onclick="modalCambiarClave()">Cambiar Clave</button>
+                    <button class="btn btn-primary flex-1 text-sm" onclick="closeModalUI()">Cerrar Perfil</button>
                 </div>
             </div>
-        </div>
-        <div class="flex flex-col sm:flex-row gap-2 mt-2">
-            <button class="btn btn-secondary flex-1 text-sm" onclick="modalCambiarCorreoRequest()">Cambiar Correo</button>
-            <button class="btn btn-secondary flex-1 text-sm" onclick="modalCambiarClave()">Cambiar Clave</button>
-            <button class="btn btn-primary flex-1 text-sm" onclick="closeModalUI()">Cerrar Perfil</button>
         </div>
     `;
-    createModalUI(modalHTML, '500px');
+    createModalUI(modalHTML, '700px');
 }
 
 function modalCambiarClave() {
