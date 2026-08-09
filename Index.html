@@ -279,6 +279,16 @@ h1, h2, h3 { letter-spacing: -0.01em; color: var(--text-primary); font-weight: 6
     border-color: var(--cantv-blue-light);
     box-shadow: 0 0 0 3px rgba(59,130,246,0.18);
 }
+select.input-field {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1rem;
+    padding-right: 2.5rem;
+}
 select.input-field option { background: #ffffff; color: var(--text-primary); }
 
 /* Buttons */
@@ -4685,7 +4695,7 @@ function toggleCargoInput(tipo) {
 
 function renderCreatePersona() {
     const posOpts = (db.positions||[]).map(p => `<option value="${p.id_posicion}">${p.description}</option>`).join('');
-    const regOpts = (db.regions||[]).filter(r => r.description.toLowerCase() !== 'nacional').map(r => `<option value="${r.id_region}">${r.description}</option>`).join('');
+    const regOpts = (db.regions||[]).filter(r => r.description.trim().toLowerCase() !== 'nacional').map(r => `<option value="${r.id_region}">${r.description}</option>`).join('');
     const uniOpts = (db.units||[]).map(u => `<option value="${u.id}">${u.description}</option>`).join('');
     const genOpts = (db.general_managements||[]).map(g => `<option value="${g.id_gerencia_gral}">${g.description}</option>`).join('');
     const linOpts = (db.line_managements||[]).map(l => `<option value="${l.id_gerencia_linea}">${l.description}</option>`).join('');
@@ -4927,7 +4937,7 @@ function renderAdminUsers() {
 
 async function adminModalCrearUsuario() {
     const rolesOpts = db.roles.map(r => `<option value="${r.id_rol}">${r.name}</option>`).join('');
-    const regionesOpts = (db.regions || []).filter(r => r.description.toLowerCase() !== 'nacional').map(r => `<option value="${r.id_region}">${r.description}</option>`).join('');
+    const regionesOpts = (db.regions || []).filter(r => r.description.trim().toLowerCase() !== 'nacional').map(r => `<option value="${r.id_region}">${r.description}</option>`).join('');
     const form = `
         <h3 class="font-bold text-xl mb-4" style="color: var(--cantv-blue-light);">Añadir Nuevo Usuario</h3>
         <form onsubmit="adminCrearUsuario(event)" class="flex flex-col gap-4" novalidate>
@@ -5161,7 +5171,7 @@ async function adminModalEditarUsuario(userId) {
     const u = db.users.find(x => x.id == userId);
     const rolesOpts = db.roles.map(r => `<option value="${r.id_rol}" ${r.id_rol == u.role_id ? 'selected' : ''}>${r.name}</option>`).join('');
     const regionActual = db.regions.find(r => r.description === u.region);
-    const regionesOpts = (db.regions || []).filter(r => r.description.toLowerCase() !== 'nacional').map(r => `<option value="${r.id_region}" ${regionActual && r.id_region == regionActual.id_region ? 'selected' : ''}>${r.description}</option>`).join('');
+    const regionesOpts = (db.regions || []).filter(r => r.description.trim().toLowerCase() !== 'nacional').map(r => `<option value="${r.id_region}" ${regionActual && r.id_region == regionActual.id_region ? 'selected' : ''}>${r.description}</option>`).join('');
     const form = `
         <h3 class="font-bold text-xl mb-4" style="color: var(--cantv-blue-light);">Editar Usuario</h3>
         <div class="flex flex-col gap-4">
