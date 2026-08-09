@@ -4985,6 +4985,9 @@ async function adminCrearUsuario(e) {
     if (!/^[a-zA-ZÁÉÍÓÚáéíóúÑñ\s]+$/.test(nombre)) {
         return marcarCampoInvalido(nameEl, 'El nombre completo solo puede contener letras y espacios.');
     }
+    if (db.users.some(u => (u.name || '').trim().toLowerCase() === nombre.toLowerCase())) {
+        return marcarCampoInvalido(nameEl, 'Ya existe un usuario registrado con este nombre completo.');
+    }
 
     // Correo electrónico: formato válido y único
     if (!email) {
@@ -5000,6 +5003,9 @@ async function adminCrearUsuario(e) {
     // Teléfono: opcional, pero si se ingresa debe tener un formato de teléfono válido
     if (telefono && !/^[\d+\-\s]{7,20}$/.test(telefono)) {
         return marcarCampoInvalido(telefonoEl, 'Ingrese un teléfono válido (solo números, espacios y guiones).');
+    }
+    if (telefono && db.users.some(u => (u.telefono || '').replace(/\D/g, '') === telefono.replace(/\D/g, ''))) {
+        return marcarCampoInvalido(telefonoEl, 'Ya existe un usuario registrado con este número de teléfono.');
     }
 
     // Contraseña: longitud mínima, al menos una letra y un número, y sin datos personales obvios
