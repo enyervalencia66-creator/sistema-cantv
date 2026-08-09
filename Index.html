@@ -4678,14 +4678,16 @@ function toggleCargoInput(tipo) {
     
     const toggleField = (el, hide) => {
         if(!el) return;
-        const wrapper = el.closest('.custom-select-wrapper') || el.closest('.form-group.full-width');
-        if (wrapper) wrapper.style.display = hide ? 'none' : 'block';
+        const group = el.closest('.form-group');
+        if (group) group.style.display = hide ? 'none' : 'block';
         if (hide) {
             el.value = '';
             el.removeAttribute('required');
-            // update custom select text visually
-            const textSpan = wrapper.querySelector('.custom-select-text');
-            if(textSpan) textSpan.value = 'Seleccione...';
+            const wrapper = el.closest('.custom-select-wrapper');
+            if(wrapper) {
+                const textSpan = wrapper.querySelector('.custom-select-text');
+                if(textSpan) textSpan.value = 'Seleccione...';
+            }
         } else {
             el.setAttribute('required', 'true');
         }
