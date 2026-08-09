@@ -2473,7 +2473,7 @@ function renderReportesMensuales() {
         rows = reportes.map(d => `<tr class="table-row">
             <td class="font-bold">${d.nombreOriginal}</td>
             <td>${new Date(d.fecha).toLocaleDateString('es-VE', {day:'2-digit',month:'long',year:'numeric'})}</td>
-            <td class="text-right"><button class="btn btn-secondary btn-sm" onclick="openStoredFileUrl(decodeURIComponent('${encodeURIComponent(d.ruta)}'))">Ver Reporte</button></td>
+            <td class="text-right"><button class="btn btn-secondary btn-sm" onclick="openStoredFileUrl(decodeURIComponent('${encodeURIComponent(d.ruta)}'), true)">Ver Reporte</button></td>
         </tr>`).join('');
     }
 
