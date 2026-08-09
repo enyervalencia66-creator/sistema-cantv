@@ -2821,7 +2821,7 @@ function renderSolicitudes() {
             ${tabs.map(t => `<button class="btn ${solicitudesTab === t.key ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="setSolicitudesTab('${t.key}')">${t.label} <span class="badge" style="margin-left:0.4rem;background:${solicitudesTab === t.key ? 'rgba(255,255,255,0.25)' : 'var(--glass-bg-strong)'}">${t.data.length}</span></button>`).join('')}
         </div>
         <div class="glass-card p-0"><table id="solTable" class="table-container m-0">
-            <thead><tr class="table-header"><th style="width: 80px;">ID</th><th style="min-width: 180px;">Asunto</th><th style="width: 120px; min-width: 110px; text-align: center;">Estado</th><th>Enviado Por</th><th style="text-align:right">
+            <thead><tr class="table-header"><th style="width: 80px;">ID</th><th style="min-width: 180px; max-width: 350px; overflow-wrap: break-word;">Asunto</th><th style="width: 120px; min-width: 110px; text-align: center;">Estado</th><th>Enviado Por</th><th style="text-align:right">
                 <div class="table-sort-dropdown" onclick="this.classList.toggle('open'); event.stopPropagation();">
                     <button class="table-sort-btn" style="display: flex; align-items: center; gap: 4px;">
                         ${sortSolicitudes==='reciente'?'Recientes':sortSolicitudes==='antiguo'?'Antiguos':sortSolicitudes==='criticidad-desc'?'Criticidad (Alta)':'Criticidad (Baja)'}
@@ -3706,7 +3706,7 @@ function renderCasos() {
             });
 
             let html = `<table id="${tableId}" class="table-container m-0">
-                <thead><tr class="table-header"><th style="width: 80px;">ID</th><th style="min-width: 180px;">Asunto</th><th style="width: 120px; min-width: 110px; text-align: center;">Estado</th><th>Responsable</th><th style="text-align:right">
+                <thead><tr class="table-header"><th style="width: 80px;">ID</th><th style="min-width: 180px; max-width: 350px; overflow-wrap: break-word;">Asunto</th><th style="width: 120px; min-width: 110px; text-align: center;">Estado</th><th>Responsable</th><th style="text-align:right">
                     <div class="table-sort-dropdown" onclick="this.classList.toggle('open'); event.stopPropagation();">
                         <button class="table-sort-btn" style="display: flex; align-items: center; gap: 4px;">
                             ${sortCasos==='reciente'?'Recientes':sortCasos==='antiguo'?'Antiguos':sortCasos==='criticidad-desc'?'Criticidad (Alta)':'Criticidad (Baja)'}
@@ -4708,7 +4708,7 @@ function renderExpedienteDetail(cedula) {
             <input type="text" class="input-field search-input" placeholder="Buscar caso..." maxlength="50" onkeyup="filterTable('casosTable', this.value)">
         </div>
         <div class="glass-card p-0"><table id="casosTable" class="table-container m-0">
-            <thead><tr class="table-header"><th style="width: 90px;">ID Caso</th><th style="min-width: 180px;">Asunto</th><th>Grado de Implicación</th><th style="width: 120px; min-width: 110px; text-align: center;">Estado del Caso</th><th class="text-right">Acción</th></tr></thead><tbody>
+            <thead><tr class="table-header"><th style="width: 90px;">ID Caso</th><th style="min-width: 180px; max-width: 350px; overflow-wrap: break-word;">Asunto</th><th>Grado de Implicación</th><th style="width: 120px; min-width: 110px; text-align: center;">Estado del Caso</th><th class="text-right">Acción</th></tr></thead><tbody>
             ${personCasos.map(c => {
                 const grado = (c.implicaciones && c.implicaciones[p.cedula]) || 'No Definido';
                 return `<tr class="table-row"><td>${c.id}</td><td>${formatAsunto(c.asunto)}</td><td><span class="text-gradient-fuchsia text-sm font-bold">${grado}</span></td><td><span class="badge badge-low">${c.estado}</span></td>
