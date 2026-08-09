@@ -1015,11 +1015,11 @@ function togglePinItem(type, id) {
     if (type === 'solicitud') navigate('solicitudes'); else navigate('casos');
 }
 // --- MODAL SYSTEM ---
-function createModalUI(contentHTML) {
+function createModalUI(contentHTML, maxWidth = '420px') {
     return new Promise(resolve => {
         const root = document.getElementById('modalRoot');
-        root.innerHTML = `<div class="modal-overlay">
-            <div class="glass-card view-enter" style="width:100%; max-width:420px; padding:2rem;">
+        root.innerHTML = `<div class="modal-overlay" style="padding: 1rem; overflow-y: auto;">
+            <div class="glass-card view-enter" style="width:100%; max-width:${maxWidth}; padding:2rem; margin: auto;">
                 ${contentHTML}
             </div>
         </div>`;
@@ -1886,26 +1886,26 @@ function showUserProfile() {
             <p class="text-secondary">@${u.username}</p>
         </div>
         <div class="glass-card mb-6" style="background: #f8fafc; padding: 1.5rem;">
-            <div class="form-grid" style="text-align: left;">
+            <div class="form-grid" style="text-align: left; gap: 1rem;">
                 <div style="grid-column: span 1;">
-                    <div style="margin-bottom: 0.25rem;"><span class="text-muted text-xs uppercase">Correo Electrónico</span></div>
-                    <div class="font-medium" style="word-break: break-all;">${u.email || 'No registrado'}</div>
+                    <div style="margin-bottom: 0.15rem;"><span style="color: #64748b; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Correo Electrónico</span></div>
+                    <div style="font-size: 0.9rem; font-weight: 600; color: #1e293b; word-break: break-all;">${u.email || 'No registrado'}</div>
                 </div>
                 <div style="grid-column: span 1;">
-                    <div style="margin-bottom: 0.25rem;"><span class="text-muted text-xs uppercase">Teléfono</span></div>
-                    <div class="font-medium">${u.telefono || 'No registrado'}</div>
+                    <div style="margin-bottom: 0.15rem;"><span style="color: #64748b; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Teléfono</span></div>
+                    <div style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${u.telefono || 'No registrado'}</div>
                 </div>
                 <div style="grid-column: span 1;">
-                    <div style="margin-bottom: 0.25rem;"><span class="text-muted text-xs uppercase">Rol en Sistema</span></div>
+                    <div style="margin-bottom: 0.15rem;"><span style="color: #64748b; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Rol en Sistema</span></div>
                     <div><span class="badge" style="background:var(--glass-bg-strong)">${u.role}</span></div>
                 </div>
                 <div style="grid-column: span 1;">
-                    <div style="margin-bottom: 0.25rem;"><span class="text-muted text-xs uppercase">Estatus</span></div>
+                    <div style="margin-bottom: 0.15rem;"><span style="color: #64748b; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Estatus</span></div>
                     <div><span class="badge badge-low" style="text-transform: capitalize;">${u.estado || 'activo'}</span></div>
                 </div>
                 <div style="grid-column: span 2;">
-                    <div style="margin-bottom: 0.25rem;"><span class="text-muted text-xs uppercase">Región Asignada</span></div>
-                    <div class="font-medium">${u.region || 'Nacional'}</div>
+                    <div style="margin-bottom: 0.15rem;"><span style="color: #64748b; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">Región Asignada</span></div>
+                    <div style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${u.region || 'Nacional'}</div>
                 </div>
             </div>
         </div>
@@ -1915,7 +1915,7 @@ function showUserProfile() {
             <button class="btn btn-primary flex-1 text-sm" onclick="closeModalUI()">Cerrar Perfil</button>
         </div>
     `;
-    createModalUI(modalHTML);
+    createModalUI(modalHTML, '500px');
 }
 
 function modalCambiarClave() {
