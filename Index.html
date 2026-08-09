@@ -1801,7 +1801,7 @@ async function login(e) {
             resetLink.className = 'auth-link';
             resetLink.style.display = 'block';
             resetLink.style.marginTop = '0.5rem';
-            resetLink.textContent = 'Restablecer contraseña →';
+            resetLink.innerHTML = 'Restablecer contraseña <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline mb-0.5 ml-1"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>';
             resetLink.onclick = (ev) => { ev.preventDefault(); navigate('forgot-password', { username: u }); };
             errorDiv.appendChild(resetLink);
             errorDiv.classList.remove('hidden');
@@ -2075,7 +2075,7 @@ function renderForgotPassword(params = null) {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </button>
                 <div class="auth-row-between mt-1">
-                    <a href="#" onclick="navigate('login')" class="auth-link auth-link-muted">← Volver al login</a>
+                    <a href="#" onclick="navigate('login')" class="auth-link auth-link-muted"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline mb-0.5 mr-1"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> Volver al login</a>
                     <a href="#" onclick="navigate('reset-password')" class="auth-link">Ya tengo un token</a>
                 </div>
             </form>
@@ -2173,7 +2173,7 @@ function renderResetPassword(params = null) {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                 </button>
                 <div style="text-align: center; margin-top: 0.25rem;">
-                    <a href="#" onclick="navigate('login')" class="auth-link auth-link-muted">← Cancelar y volver</a>
+                    <a href="#" onclick="navigate('login')" class="auth-link auth-link-muted"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline mb-0.5 mr-1"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> Cancelar y volver</a>
                 </div>
             </form>
             </div>
@@ -3970,7 +3970,7 @@ function renderCaseDetail(id) {
         const rejMsgs = (c.historialMensajes || []).filter(m => m.texto.startsWith('RECHAZADO'));
         const rejHtml = rejMsgs.length > 0 ? `<div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:1rem;margin-bottom:1rem">
             <p style="color:#f87171;font-size:0.8rem;font-weight:600;margin-bottom:0.4rem">Correcciones requeridas:</p>
-            ${rejMsgs.slice(-3).map(m => `<p style="color:#fca5a5;font-size:0.8rem;margin-bottom:0.2rem">→ <em>${m.autor}</em>: ${m.texto.replace('RECHAZADO: ', '')}</p>`).join('')}
+            ${rejMsgs.slice(-3).map(m => `<p style="color:#fca5a5;font-size:0.8rem;margin-bottom:0.2rem"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline mb-0.5 mr-1"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg> <em>${m.autor}</em>: ${m.texto.replace('RECHAZADO: ', '')}</p>`).join('')}
         </div>` : '';
         actions = `${rejHtml}<form onsubmit="submitSust(event, '${id}')" class="flex flex-col gap-4 mt-2" novalidate>
             <textarea id="sustText" class="input-field" rows="4" required minlength="20" maxlength="1000" placeholder="Hallazgos y Sustanciación...">${hasExisting ? hasExisting.detalle : ''}</textarea>
