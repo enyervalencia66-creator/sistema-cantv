@@ -838,13 +838,26 @@ document.addEventListener('click', (e) => {
         document.querySelectorAll('.table-sort-dropdown.open').forEach(el => el.classList.remove('open'));
     }
 });
+function getUserPrefs() {
+    if (!currentUser) return { favoritos: [], anclados: [] };
+    const key = 'prefs_' + currentUser.username;
+    try { return JSON.parse(localStorage.getItem(key)) || { favoritos: [], anclados: [] }; }
+    catch(e) { return { favoritos: [], anclados: [] }; }
+}
+function saveUserPrefs(prefs) {
+    if (!currentUser) return;
+    localStorage.setItem('prefs_' + currentUser.username, JSON.stringify(prefs));
+}
+function isFavItem(id) { return getUserPrefs().favoritos.includes(String(id)); }
+function isPinnedItem(id) { return getUserPrefs().anclados.includes(String(id)); }
+
 function toggleFavItem(type, id) {
-    let item = type === 'solicitud' ? db.solicitudes.find(x => x.id == id) : db.casos.find(x => x.id == id);
-    if(!item.favoritos) item.favoritos = [];
-    if(item.favoritos.includes(currentUser.username)) item.favoritos = item.favoritos.filter(x => x !== currentUser.username);
-    else item.favoritos.push(currentUser.username);
-    saveDB();
-    if(type === 'solicitud') navigate('solicitud-detail', {id}); else navigate('case-detail', {id});
+    const prefs = getUserPrefs();
+    const strId = String(id);
+    if (prefs.favoritos.includes(strId)) prefs.favoritos = prefs.favoritos.filter(x => x !== strId);
+    else prefs.favoritos.push(strId);
+    saveUserPrefs(prefs);
+    if (type === 'solicitud') navigate('solicitudes'); else navigate('casos');
 }
 
 // --- MODALES DE EDICION (ESTUDIOS/REFERENCIAS) ---
@@ -949,11 +962,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 function togglePinItem(type, id) {
-    let item = type === 'solicitud' ? db.solicitudes.find(x => x.id == id) : db.casos.find(x => x.id == id);
-    if(!item.anclados) item.anclados = [];
-    if(item.anclados.includes(currentUser.username)) item.anclados = item.anclados.filter(x => x !== currentUser.username);
-    else item.anclados.push(currentUser.username);
-    saveDB(); if(type === 'solicitud') navigate('solicitudes'); else navigate('casos');
+    const prefs = getUserPrefs();
+    const strId = String(id);
+    if (prefs.anclados.includes(strId)) prefs.anclados = prefs.anclados.filter(x => x !== strId);
+    else prefs.anclados.push(strId);
+    saveUserPrefs(prefs);
+    if (type === 'solicitud') navigate('solicitudes'); else navigate('casos');
 }
 // --- MODAL SYSTEM ---
 function createModalUI(contentHTML) {
@@ -2705,20 +2719,25 @@ function renderSolicitudes() {
     const pendientesList = list.filter(s => !isAprobada(s) && !isRechazada(s));
     const aprobadasList = list.filter(isAprobada);
     const rechazadasList = list.filter(isRechazada);
+    const favoritosList = list.filter(s => isFavItem(s.id));
     const tabs = [
         { key: 'pendientes', label: 'Pendientes por Aprobar', data: pendientesList },
         { key: 'aprobadas', label: 'Aprobadas', data: aprobadasList },
         { key: 'rechazadas', label: 'Rechazadas', data: rechazadasList }
     ];
-    if (!tabs.some(t => t.key === solicitudesTab)) solicitudesTab = 'pendientes';
+    if (favoritosList.length > 0) {
+        tabs.unshift({ key: 'favoritos', label: '⭐ Favoritos', data: favoritosList });
+    }
+    
+    if (!tabs.some(t => t.key === solicitudesTab)) solicitudesTab = tabs[0].key;
     list = tabs.find(t => t.key === solicitudesTab).data;
 
     list.sort((a, b) => {
-        const aPinned = (a.anclados || []).includes(currentUser.username) ? 1 : 0;
-        const bPinned = (b.anclados || []).includes(currentUser.username) ? 1 : 0;
+        const aPinned = isPinnedItem(a.id) ? 1 : 0;
+        const bPinned = isPinnedItem(b.id) ? 1 : 0;
         if (aPinned !== bPinned) return bPinned - aPinned;
-        const aFav = (a.favoritos || []).includes(currentUser.username) ? 1 : 0;
-        const bFav = (b.favoritos || []).includes(currentUser.username) ? 1 : 0;
+        const aFav = isFavItem(a.id) ? 1 : 0;
+        const bFav = isFavItem(b.id) ? 1 : 0;
         if (aFav !== bFav) return bFav - aFav;
         
         const valA = (item) => {
@@ -2766,8 +2785,8 @@ function renderSolicitudes() {
             </th></tr></thead><tbody>`;
     if(list.length===0) html += `<tr><td colspan="5" class="text-center p-6 text-muted">No hay incidencias en esta categoría</td></tr>`;
     else list.forEach(s => {
-        const isPinned = (s.anclados || []).includes(currentUser.username);
-        const isFav = (s.favoritos || []).includes(currentUser.username);
+        const isPinned = isPinnedItem(s.id);
+        const isFav = isFavItem(s.id);
         const unread = !(s.vistasPor || []).includes(currentUser.username);
         const estadoColor = s.estado === 'CASO_ABIERTO' ? 'background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;' :
                            s.estado === 'Rechazada por Gerencia' ? 'background:#fef2f2;color:#dc2626;border:1px solid #fecaca;' : 'background:#fffbeb;color:#d97706;border:1px solid #fde68a;';
@@ -3601,11 +3620,11 @@ function renderCasos() {
             if (cases.length === 0) return `<p class="p-6 text-center text-muted">No hay casos en esta bandeja.</p>`;
             
             cases.sort((a, b) => {
-                const aPinned = (a.anclados || []).includes(currentUser.username) ? 1 : 0;
-                const bPinned = (b.anclados || []).includes(currentUser.username) ? 1 : 0;
+                const aPinned = isPinnedItem(a.id) ? 1 : 0;
+                const bPinned = isPinnedItem(b.id) ? 1 : 0;
                 if (aPinned !== bPinned) return bPinned - aPinned;
-                const aFav = (a.favoritos || []).includes(currentUser.username) ? 1 : 0;
-                const bFav = (b.favoritos || []).includes(currentUser.username) ? 1 : 0;
+                const aFav = isFavItem(a.id) ? 1 : 0;
+                const bFav = isFavItem(b.id) ? 1 : 0;
                 if (aFav !== bFav) return bFav - aFav;
                 
                 const valA = (item) => {
@@ -3645,9 +3664,9 @@ function renderCasos() {
                     </div>
                 </th></tr></thead><tbody>`;
             cases.forEach(c => {
-                const isPinned = (c.anclados || []).includes(currentUser.username);
-                const isFav = (c.favoritos || []).includes(currentUser.username);
-                html += `<tr class="table-row" oncontextmenu="handleRowRightClick(event)">
+                const isPinned = isPinnedItem(c.id);
+                const isFav = isFavItem(c.id);
+                html += `<tr class="table-row ${isPinned ? 'bg-fuchsia-50' : ''}" oncontextmenu="handleRowRightClick(event)">
                     <td class="font-bold" style="position: relative;">
                         <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 190px; overflow: hidden; pointer-events: none; z-index: 20;">
                             <div class="row-context-menu flex items-center gap-3 pr-3">
@@ -3681,7 +3700,12 @@ function renderCasos() {
             tabs.push({ key: 'pendientes', label: 'Pendiente por Aprobar', data: pendingApprovalCases, showAction: false });
         }
         
-        if (!tabs.some(t => t.key === casosBandejaTab)) casosBandejaTab = 'accion';
+        const favCases = list.filter(c => isFavItem(c.id));
+        if (favCases.length > 0) {
+            tabs.unshift({ key: 'favoritos', label: '⭐ Favoritos', data: favCases, showAction: true });
+        }
+        
+        if (!tabs.some(t => t.key === casosBandejaTab)) casosBandejaTab = tabs[0].key;
         const currentTab = tabs.find(t => t.key === casosBandejaTab);
 
         return `<div class="view-enter max-w-5xl">
