@@ -4670,12 +4670,13 @@ function toggleCargoInput(tipo) {
     const inp = document.getElementById('perPosInput');
     const hidden = document.getElementById('perPos');
     if (!sel || !inp || !hidden) return;
+    const selWrapper = sel.closest('.custom-select-wrapper') || sel;
     if (tipo === 'Externo' || tipo === 'Contratista') {
-        sel.style.display = 'none';
+        selWrapper.style.display = 'none';
         inp.style.display = 'block';
         hidden.value = inp.value;
     } else {
-        sel.style.display = 'block';
+        selWrapper.style.display = 'block';
         inp.style.display = 'none';
         hidden.value = sel.value;
     }
