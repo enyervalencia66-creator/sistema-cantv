@@ -128,24 +128,7 @@ body { font-family: var(--font-sans); background: var(--bg-main); background-att
 .hover\:underline:hover { text-decoration: underline; }
 
 /* Cards */
-@media (max-width: 640px) {
-    .btn-fab-mobile {
-        position: fixed;
-        bottom: 2rem;
-        right: 1.5rem;
-        width: 56px;
-        height: 56px;
-        border-radius: 50% !important;
-        padding: 0 !important;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 999;
-        box-shadow: 0 4px 16px rgba(37,99,235,0.4) !important;
-    }
-    .btn-fab-mobile span { display: none; }
-    .btn-fab-mobile svg { margin: 0 !important; width: 24px; height: 24px; }
-}
+
 .glass-card {
     background: var(--glass-bg);
     border: 1px solid rgba(15, 23, 42, 0.06);
@@ -633,7 +616,27 @@ input[type="file"]::file-selector-button:hover { background: #d1d5db; }
     .page-header .flex.gap-4.items-stretch,
     .page-header .flex { flex-wrap: wrap; width: 100%; }
     .page-header .input-field { width: 100%; max-width: 100%; flex: 1 1 100%; }
-    .page-header .btn { width: 100%; flex: 1 1 100%; justify-content: center; margin-top: 0.5rem; }
+    .page-header .btn:not(.btn-fab-mobile) { width: 100%; flex: 1 1 100%; justify-content: center; margin-top: 0.5rem; }
+    
+    /* Mobile FAB override */
+    .btn-fab-mobile {
+        position: fixed !important;
+        bottom: 2rem !important;
+        right: 1.5rem !important;
+        width: 60px !important;
+        height: 60px !important;
+        flex: none !important;
+        border-radius: 50% !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 9999 !important;
+        box-shadow: 0 6px 20px rgba(37,99,235,0.5) !important;
+        margin: 0 !important;
+    }
+    .btn-fab-mobile span { display: none !important; }
+    .btn-fab-mobile svg { margin: 0 !important; width: 28px !important; height: 28px !important; flex-shrink: 0; }
 
     /* 4. Envoltorio para Pestañas (Tabs) con Scroll Horizontal */
     .tabs-wrapper { overflow-x: auto; flex-wrap: nowrap !important; padding-bottom: 4px; -webkit-overflow-scrolling: touch; display: flex; width: 100%; }
