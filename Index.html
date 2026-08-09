@@ -4667,6 +4667,22 @@ function renderExpedienteDetail(cedula) {
     </div>`;
 }
 
+function toggleCargoInput(tipo) {
+    const sel = document.getElementById('perPosSelect');
+    const inp = document.getElementById('perPosInput');
+    const hidden = document.getElementById('perPos');
+    if (!sel || !inp || !hidden) return;
+    if (tipo === 'Externo' || tipo === 'Contratista') {
+        sel.style.display = 'none';
+        inp.style.display = 'block';
+        hidden.value = inp.value;
+    } else {
+        sel.style.display = 'block';
+        inp.style.display = 'none';
+        hidden.value = sel.value;
+    }
+}
+
 function renderCreatePersona() {
     const posOpts = (db.positions||[]).map(p => `<option value="${p.id_posicion}">${p.description}</option>`).join('');
     const regOpts = (db.regions||[]).map(r => `<option value="${r.id_region}">${r.description}</option>`).join('');
@@ -4728,7 +4744,7 @@ function renderCreatePersona() {
                 <div class="case-block-body">
                     <div class="form-grid">
                         <div class="form-group"><label class="form-label">Tipo de Personal</label>
-                            <select id="perTipo" class="input-field">
+                            <select id="perTipo" class="input-field" onchange="toggleCargoInput(this.value)">
                                 <option value="Interno">Interno</option>
                                 <option value="Externo">Externo</option>
                                 <option value="Contratista">Contratista</option>
@@ -4737,12 +4753,15 @@ function renderCreatePersona() {
                         <div class="form-group"><label class="form-label">Estatus</label>
                             <select id="perEstatus" class="input-field">
                                 <option value="Activo">Activo</option>
-                                <option value="Inactivo">Inactivo</option>
                                 <option value="Jubilado">Jubilado</option>
                             </select>
                         </div>
                         <div class="form-group"><label class="form-label">Cargo (Posición)</label>
-                            <select id="perPos" class="input-field"><option value="">Seleccione...</option>${posOpts}</select>
+                            <div id="cargoContainer">
+                                <select id="perPosSelect" class="input-field" onchange="document.getElementById('perPos').value = this.value"><option value="">Seleccione...</option>${posOpts}</select>
+                                <input type="text" id="perPosInput" class="input-field" placeholder="Ingrese el cargo" style="display: none;" oninput="document.getElementById('perPos').value = this.value">
+                                <input type="hidden" id="perPos" value="">
+                            </div>
                         </div>
                         <div class="form-group"><label class="form-label">Región</label>
                             <select id="perReg" class="input-field"><option value="">Seleccione...</option>${regOpts}</select>
