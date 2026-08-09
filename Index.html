@@ -5452,20 +5452,27 @@ function initializeSelect(select) {
     trigger.style.display = 'flex';
     trigger.style.justifyContent = 'space-between';
     trigger.style.alignItems = 'center';
-    trigger.style.cursor = 'pointer';
-    trigger.style.userSelect = 'none';
+    trigger.style.cursor = 'text';
     trigger.style.background = '#ffffff';
+    trigger.style.padding = '0';
+    trigger.style.overflow = 'hidden';
     
-    const triggerText = document.createElement('span');
-    triggerText.className = 'custom-select-text';
-    triggerText.style.pointerEvents = 'none';
-    triggerText.style.overflow = 'hidden';
-    triggerText.style.textOverflow = 'ellipsis';
-    triggerText.style.whiteSpace = 'nowrap';
+    const triggerInput = document.createElement('input');
+    triggerInput.type = 'text';
+    triggerInput.className = 'custom-select-text';
+    triggerInput.style.border = 'none';
+    triggerInput.style.outline = 'none';
+    triggerInput.style.background = 'transparent';
+    triggerInput.style.width = '100%';
+    triggerInput.style.height = '100%';
+    triggerInput.style.padding = '0.8rem 1rem';
+    triggerInput.style.fontFamily = 'inherit';
+    triggerInput.style.fontSize = 'inherit';
+    triggerInput.style.color = 'inherit';
     
     const updateTriggerText = () => {
         const selectedOpt = select.options[select.selectedIndex];
-        triggerText.textContent = selectedOpt ? selectedOpt.text : 'Seleccione...';
+        triggerInput.value = selectedOpt ? selectedOpt.text : 'Seleccione...';
     };
     updateTriggerText();
 
@@ -5473,8 +5480,10 @@ function initializeSelect(select) {
     arrowSvg.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
     arrowSvg.style.pointerEvents = 'none';
     arrowSvg.style.flexShrink = '0';
+    arrowSvg.style.paddingRight = '1rem';
+    arrowSvg.style.cursor = 'pointer';
     
-    trigger.appendChild(triggerText);
+    trigger.appendChild(triggerInput);
     trigger.appendChild(arrowSvg);
     wrapper.appendChild(trigger);
 
@@ -5493,30 +5502,8 @@ function initializeSelect(select) {
     optionsMenu.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.1)';
     optionsMenu.style.background = '#ffffff';
 
-    const searchWrapper = document.createElement('div');
-    searchWrapper.style.padding = '8px';
-    searchWrapper.style.borderBottom = '1px solid #e5e7eb';
-    searchWrapper.style.position = 'sticky';
-    searchWrapper.style.top = '0';
-    searchWrapper.style.background = '#ffffff';
-    searchWrapper.style.zIndex = '2';
-
-    const searchInput = document.createElement('input');
-    searchInput.type = 'text';
-    searchInput.placeholder = 'Buscar...';
-    searchInput.className = 'input-field';
-    searchInput.style.padding = '0.4rem 0.6rem';
-    searchInput.style.fontSize = '0.85rem';
-    searchInput.style.width = '100%';
-    
-    searchWrapper.appendChild(searchInput);
-    optionsMenu.appendChild(searchWrapper);
-
-    const optionsList = document.createElement('div');
-    optionsMenu.appendChild(optionsList);
-
     const buildOptions = (filterText = '') => {
-        optionsList.innerHTML = '';
+        optionsMenu.innerHTML = '';
         const term = filterText.toLowerCase().trim();
         let hasVisible = false;
 
@@ -5550,7 +5537,7 @@ function initializeSelect(select) {
                 optionsMenu.style.display = 'none';
                 buildOptions(); 
             });
-            optionsList.appendChild(optDiv);
+            optionsMenu.appendChild(optDiv);
         });
 
         if(!hasVisible) {
@@ -5560,30 +5547,43 @@ function initializeSelect(select) {
             noRes.style.fontSize = '0.85rem';
             noRes.style.color = '#6b7280';
             noRes.style.textAlign = 'center';
-            optionsList.appendChild(noRes);
+            optionsMenu.appendChild(noRes);
         }
     };
     buildOptions();
     wrapper.appendChild(optionsMenu);
 
-    searchInput.addEventListener('input', (e) => {
+    triggerInput.addEventListener('input', (e) => {
         buildOptions(e.target.value);
-    });
-    searchWrapper.addEventListener('click', (e) => e.stopPropagation());
-
-    trigger.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const isMenuVisible = optionsMenu.style.display === 'block';
-        document.querySelectorAll('.custom-select-options').forEach(m => m.style.display = 'none');
-        
-        if (!isMenuVisible) {
-            searchInput.value = '';
-            buildOptions();
-            optionsMenu.style.display = 'block';
-            setTimeout(() => searchInput.focus(), 50);
-        }
+        optionsMenu.style.display = 'block';
     });
     
+    triggerInput.addEventListener('focus', () => {
+        triggerInput.select(); // Select all text so typing immediately overwrites it
+        buildOptions(''); // Show all options initially on focus
+        document.querySelectorAll('.custom-select-options').forEach(m => m.style.display = 'none');
+        optionsMenu.style.display = 'block';
+    });
+
+    triggerInput.addEventListener('blur', () => {
+        // We delay the blur action so the click on an option registers first
+        setTimeout(() => {
+            if(!wrapper.contains(document.activeElement)) {
+                updateTriggerText(); // Restore original text if they didn't click an option
+                optionsMenu.style.display = 'none';
+            }
+        }, 150);
+    });
+    
+    arrowSvg.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (optionsMenu.style.display === 'block') {
+            optionsMenu.style.display = 'none';
+        } else {
+            triggerInput.focus();
+        }
+    });
+
     const observer = new MutationObserver(() => {
         updateTriggerText();
         buildOptions();
