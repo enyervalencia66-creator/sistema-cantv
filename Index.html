@@ -2883,11 +2883,11 @@ function renderSolicitudes() {
 
 function renderCreateSolicitud() {
     return `<div class="view-enter max-w-3xl">
-        <div class="case-header">
+        <div class="case-header" style="justify-content: space-between;">
+            <h1 class="case-title" style="font-size: 1.875rem;">Registrar Nueva Incidencia</h1>
             <button onclick="navigate('solicitudes')" class="btn btn-secondary case-back-btn" title="Volver">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
             </button>
-            <h1 class="case-title" style="font-size: 1.875rem;">Registrar Nueva Incidencia</h1>
         </div>
         <div class="glass-card">
             <form onsubmit="crearSolicitud(event)" class="flex flex-col gap-4" novalidate>
