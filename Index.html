@@ -2814,10 +2814,11 @@ function renderCreateSolicitud() {
                     <input type="text" id="solAsunto" class="input-field" required minlength="10" maxlength="200" autocomplete="off"></div>
                 <div class="form-group"><label class="form-label">Criticidad Percibida</label>
                     <select id="solCrit" class="input-field" required><option value="Baja">Baja</option><option value="Media">Media</option><option value="Alta">Alta</option></select></div>
-                <div class="form-group"><label class="form-label">Documento Soporte 1 (Cualquier formato)</label>
-                    <input type="file" id="solXls" class="input-field" required accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.png" style="padding-top:10px;"></div>
-                <div class="form-group"><label class="form-label">Documento Soporte 2 (Cualquier formato / Evidencias)</label>
-                    <input type="file" id="solPpt" class="input-field" required accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.png" style="padding-top:10px;"></div>
+                <div class="form-group"><label class="form-label">Documento Soporte 1</label>
+                    <input type="file" id="solXls" class="input-field" required accept=".pdf,image/png,image/jpeg,image/jpg" style="padding-top:10px;"></div>
+                <div class="form-group mb-6">
+                    <label class="form-label font-bold flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> Constancia o Soporte (2)</label>
+                    <input type="file" id="solPpt" class="input-field" required accept=".pdf,image/png,image/jpeg,image/jpg" style="padding-top:10px;"></div>
                 <button type="submit" class="btn btn-primary w-full mt-4">Enviar Incidencia a Gerencia</button>
             </form>
         </div></div>`;
@@ -2857,14 +2858,20 @@ function renderImagenProtegidaHtml(src) {
 // el resto (PDFs, etc.) los renderiza el navegador de forma nativa al abrirlos en una pestaña nueva.
 // Usada para los documentos del EXPEDIENTE (estudios, referencias laborales) y reportes del
 // sistema, donde sí se permite que el visor nativo del navegador ofrezca su propia descarga.
-function openStoredFileUrl(url) {
+function openStoredFileUrl(url, isOwner = false) {
     if (!url) return showToast('Archivo no disponible.', 'error');
-    if (/\.(docx?|xlsx?|pptx?)(\?.*)?$/i.test(url)) {
+    if (/\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/i.test(url)) {
+        if (isOwner) window.open(url, '_blank');
+        else {
+            const w = window.open();
+            if (w) w.document.write(renderImagenProtegidaHtml(url));
+            else showToast('El navegador bloqueó la ventana emergente.', 'warning');
+        }
+    } else if (/\.pdf(\?.*)?$/i.test(url)) {
+        if (isOwner) window.open(url, '_blank');
+        else abrirPdfInterno(url, 'Documento');
+    } else if (/\.(docx?|xlsx?|pptx?)(\?.*)?$/i.test(url)) {
         window.open('https://view.officeapps.live.com/op/view.aspx?src=' + encodeURIComponent(url), '_blank');
-    } else if (/\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/i.test(url)) {
-        const w = window.open();
-        if (w) w.document.write(renderImagenProtegidaHtml(url));
-        else showToast('El navegador bloqueó la ventana emergente.', 'warning');
     } else {
         window.open(url, '_blank');
     }
@@ -2952,14 +2959,22 @@ async function abrirPdfInterno(url, nombre) {
 // no controlamos y sí permite descargar desde ahí) hasta que esos adjuntos se conviertan a PDF en
 // el servidor. Los documentos del EXPEDIENTE (estudios, referencias) NO pasan por aquí — siguen
 // usando openStoredFileUrl con descarga permitida.
-function abrirDocumentoCaso(url, nombre) {
+function abrirDocumentoCaso(url, nombre, isOwner = false) {
     if (!url) return showToast('Archivo no disponible.', 'error');
     if (/\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/i.test(url)) {
-        const w = window.open();
-        if (w) w.document.write(renderImagenProtegidaHtml(url));
-        else showToast('El navegador bloqueó la ventana emergente.', 'warning');
+        if (isOwner) {
+            window.open(url, '_blank');
+        } else {
+            const w = window.open();
+            if (w) w.document.write(renderImagenProtegidaHtml(url));
+            else showToast('El navegador bloqueó la ventana emergente.', 'warning');
+        }
     } else if (/\.pdf(\?.*)?$/i.test(url)) {
-        abrirPdfInterno(url, nombre);
+        if (isOwner) {
+            window.open(url, '_blank');
+        } else {
+            abrirPdfInterno(url, nombre);
+        }
     } else if (/\.(docx?|xlsx?|pptx?)(\?.*)?$/i.test(url)) {
         window.open('https://view.officeapps.live.com/op/view.aspx?src=' + encodeURIComponent(url), '_blank');
     } else {
@@ -2977,14 +2992,22 @@ function downloadFile(fileObj) {
 }
 
 // Helper: preview a stored file object (images inline, others download)
-function previewFile(fileObj) {
+function previewFile(fileObj, isOwner = false) {
     if (!fileObj || !fileObj.data) return showToast('Archivo no disponible.', 'error');
     if (fileObj.type && fileObj.type.startsWith('image/')) {
-        const w = window.open();
-        if (w) w.document.write(renderImagenProtegidaHtml(fileObj.data));
-        else showToast('El navegador bloqueó la ventana emergente.', 'warning');
+        if (isOwner) {
+            downloadFile(fileObj);
+        } else {
+            const w = window.open();
+            if (w) w.document.write(renderImagenProtegidaHtml(fileObj.data));
+            else showToast('El navegador bloqueó la ventana emergente.', 'warning');
+        }
     } else if (fileObj.type === 'application/pdf') {
-        abrirPdfInterno(fileObj.data, fileObj.name);
+        if (isOwner) {
+            downloadFile(fileObj);
+        } else {
+            abrirPdfInterno(fileObj.data, fileObj.name);
+        }
     } else {
         downloadFile(fileObj);
     }
@@ -3002,7 +3025,7 @@ function renderFileChip(fileObj, label, uploaderUsername) {
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
         <span class="file-badge-name" title="${name}">${label ? `<span style="color:var(--text-secondary)">${label}</span> ` : ''}<strong>${name}</strong></span>
         <span class="file-actions">
-        ${isPreviewable ? `<button class="file-action-btn file-action-view icon-only" title="Vista previa" onclick="previewFile(JSON.parse(decodeURIComponent('${encoded}')))">${ICON_EYE_SM}</button>` : ''}
+        ${isPreviewable ? `<button class="file-action-btn file-action-view icon-only" title="Vista previa" onclick="previewFile(JSON.parse(decodeURIComponent('${encoded}')), ${puedeDescargar})">${ICON_EYE_SM}</button>` : ''}
         ${!isStr ? (puedeDescargar ? `<button class="file-action-btn file-action-download icon-only" title="Descargar" onclick="downloadFile(JSON.parse(decodeURIComponent('${encoded}')))">${ICON_DOWNLOAD}</button>` : '') : `<span style="font-size:0.65rem;color:var(--text-muted);white-space:nowrap">(Antiguo)</span>`}
         </span>
     </div>`;
@@ -3024,10 +3047,12 @@ function renderFileBadge(fileObj, uploaderUsername) {
     const encodedName = isUrl ? encodeURIComponent(name) : '';
 
     let buttons = '';
+    const isOwner = !!uploaderUsername && !!currentUser && currentUser.username === uploaderUsername;
+    
     if (isUrl) {
-        buttons = `<button class="file-action-btn file-action-view icon-only" title="Ver Documento" onclick="abrirDocumentoCaso(decodeURIComponent('${encodedUrl}'), decodeURIComponent('${encodedName}'))">${ICON_EYE_SM}</button>`;
+        buttons = `<button class="file-action-btn file-action-view icon-only" title="Ver Documento" onclick="abrirDocumentoCaso(decodeURIComponent('${encodedUrl}'), decodeURIComponent('${encodedName}'), ${isOwner})">${ICON_EYE_SM}</button>`;
     } else if (!isStr) {
-        buttons = `<button class="file-action-btn file-action-view icon-only" title="Ver" onclick="previewFile(JSON.parse(decodeURIComponent('${encoded}')))">${ICON_EYE_SM}</button>`;
+        buttons = `<button class="file-action-btn file-action-view icon-only" title="Ver" onclick="previewFile(JSON.parse(decodeURIComponent('${encoded}')), ${isOwner})">${ICON_EYE_SM}</button>`;
     } else {
         buttons = `<span style="font-size:0.65rem;color:var(--text-muted);white-space:nowrap">(Antiguo)</span>`;
     }
@@ -3924,7 +3949,7 @@ function renderCaseDetail(id) {
             <div class="case-actions-file-row">
                 <div class="form-group">
                     <label class="form-label" style="font-size:0.8rem">Documento 1 <span style="color:var(--cantv-fuchsia);font-size:0.75rem">*</span></label>
-                    <input type="file" id="sustXls" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.png" style="display:none;" onchange="updateFileZone('sustXls','sustXlsZone','sustXlsName')">
+                    <input type="file" id="sustXls" accept=".pdf,image/png,image/jpeg,image/jpg" style="display:none;" onchange="updateFileZone('sustXls','sustXlsZone','sustXlsName')">
                     <div class="file-upload-zone" id="sustXlsZone" onclick="document.getElementById('sustXls').click()">
                         <span class="file-upload-btn">+</span>
                         <span class="file-upload-name" id="sustXlsName">Sin archivo seleccionado</span>
@@ -3932,7 +3957,7 @@ function renderCaseDetail(id) {
                 </div>
                 <div class="form-group">
                     <label class="form-label" style="font-size:0.8rem">Documento 2</label>
-                    <input type="file" id="sustPpt" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.png" style="display:none;" onchange="updateFileZone('sustPpt','sustPptZone','sustPptName')">
+                    <input type="file" id="sustPpt" accept=".pdf,image/png,image/jpeg,image/jpg" style="display:none;" onchange="updateFileZone('sustPpt','sustPptZone','sustPptName')">
                     <div class="file-upload-zone" id="sustPptZone" onclick="document.getElementById('sustPpt').click()">
                         <span class="file-upload-btn">+</span>
                         <span class="file-upload-name" id="sustPptName">Sin archivo seleccionado</span>
