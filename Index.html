@@ -1028,6 +1028,14 @@ function uiAlert(msg, title='Notificación') {
     return createModalUI(`<h3 class="font-bold text-xl mb-4 text-cantv-fuchsia">${title}</h3><p class="text-secondary mb-6 text-sm">${msg}</p><button class="btn btn-primary w-full" onclick="closeModalUI()">Aceptar</button>`);
 }
 
+function formatAsunto(text) {
+    if (!text) return '';
+    const MAX = 40;
+    if (text.length <= MAX) return text;
+    const short = text.substring(0, MAX) + '...';
+    return `<span class="asunto-short">${short} <a href="javascript:void(0)" onclick="this.parentElement.style.display='none'; this.parentElement.nextElementSibling.style.display='inline';" style="color:var(--cantv-blue-light);font-weight:600;font-size:0.75rem;margin-left:5px;">Ver más</a></span><span class="asunto-full" style="display:none;">${text} <a href="javascript:void(0)" onclick="this.parentElement.style.display='none'; this.parentElement.previousElementSibling.style.display='inline';" style="color:var(--cantv-blue-light);font-weight:600;font-size:0.75rem;margin-left:5px;">Ver menos</a></span>`;
+}
+
 function showToast(msg, type='success') {
     const existing = document.getElementById('sys-toast');
     if(existing) existing.remove();
@@ -2862,7 +2870,7 @@ function renderSolicitudes() {
                     ${unread ? '<span style="width:8px;height:8px;background:var(--cantv-fuchsia);border-radius:50%;flex-shrink:0;"></span>' : ''}
                 </div>
             </td>
-            <td>${s.asunto}</td>
+            <td>${formatAsunto(s.asunto)}</td>
             <td><span class="badge" style="${estadoColor}">${estadoLabel}</span></td>
             <td><span style="font-size:0.8rem">${(() => { const u = db.users.find(x => x.username === s.creadoPor); return u ? `${u.name} <span class="badge badge-low" style="font-size:0.7rem;padding:0.1rem 0.4rem;">${u.role}</span>` : s.creadoPor; })()}</span></td>
             <td><button class="btn btn-secondary btn-sm" onclick="navigate('solicitud-detail', {id:'${s.id}'})">Ver</button></td>
@@ -3734,7 +3742,7 @@ function renderCasos() {
                             <span class="text-gradient-fuchsia font-mono" style="font-size: 0.9rem; transform: translateY(1px);">${c.id}</span>
                         </div>
                     </td>
-                    <td>${c.asunto}</td>
+                    <td>${formatAsunto(c.asunto)}</td>
                     <td><span class="badge badge-low">${c.estado}</span></td>
                     <td>${c.asignadoA}</td>
                     <td><button class="btn btn-secondary btn-sm" onclick="navigate('case-detail', {id:'${c.id}'})">${showAction ? 'Procesar' : 'Ver'}</button></td>
@@ -4703,7 +4711,7 @@ function renderExpedienteDetail(cedula) {
             <thead><tr class="table-header"><th>ID Caso</th><th>Asunto</th><th>Grado de Implicación</th><th>Estado del Caso</th><th class="text-right">Acción</th></tr></thead><tbody>
             ${personCasos.map(c => {
                 const grado = (c.implicaciones && c.implicaciones[p.cedula]) || 'No Definido';
-                return `<tr class="table-row"><td>${c.id}</td><td>${c.asunto}</td><td><span class="text-gradient-fuchsia text-sm font-bold">${grado}</span></td><td><span class="badge badge-low">${c.estado}</span></td>
+                return `<tr class="table-row"><td>${c.id}</td><td>${formatAsunto(c.asunto)}</td><td><span class="text-gradient-fuchsia text-sm font-bold">${grado}</span></td><td><span class="badge badge-low">${c.estado}</span></td>
                     <td class="text-right"><button class="btn btn-secondary btn-sm" onclick="navigate('case-detail', {id:'${c.id}'})">Ver Caso</button></td></tr>`;
             }).join('')}
             </tbody>
