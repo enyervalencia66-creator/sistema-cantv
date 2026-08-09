@@ -2726,7 +2726,7 @@ function renderSolicitudes() {
         { key: 'rechazadas', label: 'Rechazadas', data: rechazadasList }
     ];
     if (favoritosList.length > 0) {
-        tabs.unshift({ key: 'favoritos', label: '⭐ Favoritos', data: favoritosList });
+        tabs.unshift({ key: 'favoritos', label: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" class="inline mb-0.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> Favoritos', data: favoritosList });
     }
     
     if (!tabs.some(t => t.key === solicitudesTab)) solicitudesTab = tabs[0].key;
@@ -3709,7 +3709,7 @@ function renderCasos() {
         
         const favCases = list.filter(c => isFavItem(c.id));
         if (favCases.length > 0) {
-            tabs.unshift({ key: 'favoritos', label: '⭐ Favoritos', data: favCases, showAction: true });
+            tabs.unshift({ key: 'favoritos', label: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" class="inline mb-0.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> Favoritos', data: favCases, showAction: true });
         }
         
         if (!tabs.some(t => t.key === casosBandejaTab)) casosBandejaTab = tabs[0].key;
