@@ -412,7 +412,7 @@ h1, h2, h3 { letter-spacing: -0.01em; color: var(--text-primary); font-weight: 6
 .table-sort-item.active { background: #f1f5f9; color: var(--cantv-blue-base); }
 
 /* Badges */
-.badge { padding: 0.35rem 0.65rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; display: inline-block; border: 1px solid transparent; white-space: normal; text-align: center; line-height: 1.2; word-break: normal; overflow-wrap: break-word; }
+.badge { padding: 0.35rem 0.65rem; border-radius: 8px; font-size: 0.7rem; font-weight: 600; display: inline-block; border: 1px solid transparent; white-space: normal; text-align: center; line-height: 1.2; word-break: normal; overflow-wrap: break-word; }
 .badge-low { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
 .badge-med { background: #fffbeb; color: #d97706; border-color: #fde68a; }
 .badge-high { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
@@ -2821,7 +2821,7 @@ function renderSolicitudes() {
             ${tabs.map(t => `<button class="btn ${solicitudesTab === t.key ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="setSolicitudesTab('${t.key}')">${t.label} <span class="badge" style="margin-left:0.4rem;background:${solicitudesTab === t.key ? 'rgba(255,255,255,0.25)' : 'var(--glass-bg-strong)'}">${t.data.length}</span></button>`).join('')}
         </div>
         <div class="glass-card p-0"><table id="solTable" class="table-container m-0">
-            <thead><tr class="table-header"><th style="width: 80px;">ID</th><th style="width: 50%; min-width: 200px;">Asunto</th><th style="width: 120px; min-width: 110px; text-align: center;">Estado</th><th>Enviado Por</th><th style="text-align:right">
+            <thead><tr class="table-header"><th style="width: 80px;">ID</th><th style="min-width: 180px;">Asunto</th><th style="width: 120px; min-width: 110px; text-align: center;">Estado</th><th>Enviado Por</th><th style="text-align:right">
                 <div class="table-sort-dropdown" onclick="this.classList.toggle('open'); event.stopPropagation();">
                     <button class="table-sort-btn" style="display: flex; align-items: center; gap: 4px;">
                         ${sortSolicitudes==='reciente'?'Recientes':sortSolicitudes==='antiguo'?'Antiguos':sortSolicitudes==='criticidad-desc'?'Criticidad (Alta)':'Criticidad (Baja)'}
@@ -3706,7 +3706,7 @@ function renderCasos() {
             });
 
             let html = `<table id="${tableId}" class="table-container m-0">
-                <thead><tr class="table-header"><th style="width: 80px;">ID</th><th style="width: 50%; min-width: 200px;">Asunto</th><th style="width: 120px; min-width: 110px; text-align: center;">Estado</th><th>Responsable</th><th style="text-align:right">
+                <thead><tr class="table-header"><th style="width: 80px;">ID</th><th style="min-width: 180px;">Asunto</th><th style="width: 120px; min-width: 110px; text-align: center;">Estado</th><th>Responsable</th><th style="text-align:right">
                     <div class="table-sort-dropdown" onclick="this.classList.toggle('open'); event.stopPropagation();">
                         <button class="table-sort-btn" style="display: flex; align-items: center; gap: 4px;">
                             ${sortCasos==='reciente'?'Recientes':sortCasos==='antiguo'?'Antiguos':sortCasos==='criticidad-desc'?'Criticidad (Alta)':'Criticidad (Baja)'}
@@ -4708,7 +4708,7 @@ function renderExpedienteDetail(cedula) {
             <input type="text" class="input-field search-input" placeholder="Buscar caso..." maxlength="50" onkeyup="filterTable('casosTable', this.value)">
         </div>
         <div class="glass-card p-0"><table id="casosTable" class="table-container m-0">
-            <thead><tr class="table-header"><th style="width: 90px;">ID Caso</th><th style="width: 45%; min-width: 200px;">Asunto</th><th>Grado de Implicación</th><th style="width: 120px; min-width: 110px; text-align: center;">Estado del Caso</th><th class="text-right">Acción</th></tr></thead><tbody>
+            <thead><tr class="table-header"><th style="width: 90px;">ID Caso</th><th style="min-width: 180px;">Asunto</th><th>Grado de Implicación</th><th style="width: 120px; min-width: 110px; text-align: center;">Estado del Caso</th><th class="text-right">Acción</th></tr></thead><tbody>
             ${personCasos.map(c => {
                 const grado = (c.implicaciones && c.implicaciones[p.cedula]) || 'No Definido';
                 return `<tr class="table-row"><td>${c.id}</td><td>${formatAsunto(c.asunto)}</td><td><span class="text-gradient-fuchsia text-sm font-bold">${grado}</span></td><td><span class="badge badge-low">${c.estado}</span></td>
