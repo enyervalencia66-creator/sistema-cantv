@@ -279,18 +279,6 @@ h1, h2, h3 { letter-spacing: -0.01em; color: var(--text-primary); font-weight: 6
     border-color: var(--cantv-blue-light);
     box-shadow: 0 0 0 3px rgba(59,130,246,0.18);
 }
-select.input-field {
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 1rem center;
-    background-size: 1rem;
-    padding-right: 2.5rem;
-}
-select.input-field option { background: #ffffff; color: var(--text-primary); }
-
 /* Buttons */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.75rem 1.5rem; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; border: 1px solid transparent; font-family: var(--font-sans); transition: all 0.2s ease; }
 .btn-primary { background: #0e1730; color: white; box-shadow: 0 1px 3px rgba(14,23,48,0.2); border: none; }
@@ -5438,6 +5426,151 @@ document.addEventListener('input', function(e) {
 });
 
 bootApp();
-    </script>
+// Automatically convert native selects to custom ones
+function initializeSelect(select) {
+    if (select.dataset.customized) return;
+    select.dataset.customized = "true";
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'custom-select-wrapper';
+    wrapper.style.position = 'relative';
+    
+    select.parentNode.insertBefore(wrapper, select);
+    wrapper.appendChild(select);
+    
+    // Hide native select but keep it accessible for form validation
+    select.style.position = 'absolute';
+    select.style.opacity = '0';
+    select.style.pointerEvents = 'none';
+    select.style.height = '100%';
+    select.style.width = '100%';
+    select.style.zIndex = '-1';
+
+    const trigger = document.createElement('div');
+    trigger.className = 'custom-select-trigger input-field';
+    trigger.style.display = 'flex';
+    trigger.style.justifyContent = 'space-between';
+    trigger.style.alignItems = 'center';
+    trigger.style.cursor = 'pointer';
+    trigger.style.userSelect = 'none';
+    trigger.style.background = '#ffffff';
+    
+    const triggerText = document.createElement('span');
+    triggerText.className = 'custom-select-text';
+    triggerText.style.pointerEvents = 'none';
+    triggerText.style.overflow = 'hidden';
+    triggerText.style.textOverflow = 'ellipsis';
+    triggerText.style.whiteSpace = 'nowrap';
+    
+    const updateTriggerText = () => {
+        const selectedOpt = select.options[select.selectedIndex];
+        triggerText.textContent = selectedOpt ? selectedOpt.text : 'Seleccione...';
+    };
+    updateTriggerText();
+
+    const arrowSvg = document.createElement('div');
+    arrowSvg.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+    arrowSvg.style.pointerEvents = 'none';
+    arrowSvg.style.flexShrink = '0';
+    
+    trigger.appendChild(triggerText);
+    trigger.appendChild(arrowSvg);
+    wrapper.appendChild(trigger);
+
+    const optionsMenu = document.createElement('div');
+    optionsMenu.className = 'custom-select-options glass-card';
+    optionsMenu.style.position = 'absolute';
+    optionsMenu.style.top = '100%';
+    optionsMenu.style.left = '0';
+    optionsMenu.style.right = '0';
+    optionsMenu.style.zIndex = '9999';
+    optionsMenu.style.marginTop = '4px';
+    optionsMenu.style.maxHeight = '250px';
+    optionsMenu.style.overflowY = 'auto';
+    optionsMenu.style.display = 'none';
+    optionsMenu.style.padding = '4px 0';
+    optionsMenu.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.1)';
+    optionsMenu.style.background = '#ffffff';
+
+    const buildOptions = () => {
+        optionsMenu.innerHTML = '';
+        Array.from(select.options).forEach(opt => {
+            if(opt.style.display === 'none') return;
+            
+            const optDiv = document.createElement('div');
+            optDiv.className = 'custom-select-option';
+            optDiv.textContent = opt.text;
+            optDiv.style.padding = '0.65rem 1rem';
+            optDiv.style.cursor = 'pointer';
+            optDiv.style.transition = 'all 0.2s';
+            optDiv.style.fontSize = '0.9rem';
+            
+            if (opt.selected) {
+                optDiv.style.background = 'var(--cantv-blue-light)';
+                optDiv.style.color = '#fff';
+                optDiv.style.fontWeight = 'bold';
+            } else {
+                optDiv.addEventListener('mouseenter', () => optDiv.style.background = '#f3f4f6');
+                optDiv.addEventListener('mouseleave', () => optDiv.style.background = 'transparent');
+            }
+            
+            optDiv.addEventListener('click', (e) => {
+                e.stopPropagation();
+                select.value = opt.value;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+                updateTriggerText();
+                optionsMenu.style.display = 'none';
+                buildOptions(); 
+            });
+            optionsMenu.appendChild(optDiv);
+        });
+    };
+    buildOptions();
+    wrapper.appendChild(optionsMenu);
+
+    trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isMenuVisible = optionsMenu.style.display === 'block';
+        document.querySelectorAll('.custom-select-options').forEach(m => m.style.display = 'none');
+        
+        if (!isMenuVisible) {
+            buildOptions();
+            optionsMenu.style.display = 'block';
+        }
+    });
+    
+    const observer = new MutationObserver(() => {
+        updateTriggerText();
+        buildOptions();
+    });
+    observer.observe(select, { childList: true, attributes: true, attributeFilter: ['value'] });
+    
+    select.addEventListener('change', () => {
+        updateTriggerText();
+        buildOptions();
+    });
+}
+
+document.addEventListener('click', () => {
+    document.querySelectorAll('.custom-select-options').forEach(m => m.style.display = 'none');
+});
+
+const selectObserver = new MutationObserver((mutations) => {
+    mutations.forEach(mutation => {
+        mutation.addedNodes.forEach(node => {
+            if (node.nodeType === 1) {
+                if (node.tagName === 'SELECT' && node.classList.contains('input-field')) {
+                    initializeSelect(node);
+                }
+                const selects = node.querySelectorAll ? node.querySelectorAll('select.input-field') : [];
+                selects.forEach(initializeSelect);
+            }
+        });
+    });
+});
+selectObserver.observe(document.body, { childList: true, subtree: true });
+
+document.querySelectorAll('select.input-field').forEach(initializeSelect);
+</script>
 </body>
 </html>
