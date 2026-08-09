@@ -2887,7 +2887,7 @@ function renderCreateSolicitud() {
         <div class="glass-card">
             <form onsubmit="crearSolicitud(event)" class="flex flex-col gap-4" novalidate>
                 <div class="form-group"><label class="form-label">Descripción de la Incidencia</label>
-                    <input type="text" id="solAsunto" class="input-field" required minlength="10" maxlength="200" autocomplete="off"></div>
+                    <textarea id="solAsunto" class="input-field" required minlength="10" maxlength="200" autocomplete="off" rows="2" style="resize:none; overflow:hidden; padding-top:0.75rem;" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea></div>
                 <div class="form-group"><label class="form-label">Criticidad Percibida</label>
                     <select id="solCrit" class="input-field" required><option value="Baja">Baja</option><option value="Media">Media</option><option value="Alta">Alta</option></select></div>
                 <div class="form-group"><label class="form-label">Documento Soporte 1</label>
