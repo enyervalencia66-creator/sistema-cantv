@@ -2316,21 +2316,44 @@ function renderReportPreview() {
             </div>
         </div>
         
-        <h3 class="text-xl font-bold mb-4">Resumen Ejecutivo de Rendimiento</h3>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 2rem; font-size: 0.875rem;">
-            <tr style="background: #f3f4f6;">
-                <th style="padding: 12px; border: 1px solid #ccc; text-align: left;">Total Casos Procesados</th>
-                <th style="padding: 12px; border: 1px solid #ccc; text-align: left;">Tasa de Cierre</th>
-                <th style="padding: 12px; border: 1px solid #ccc; text-align: left;">Tiempo Promedio Resolución</th>
-                <th style="padding: 12px; border: 1px solid #ccc; text-align: left; background: #e5e7eb;">% CUMPLIMIENTO A TIEMPO</th>
-            </tr>
-            <tr>
-                <td style="padding: 12px; border: 1px solid #ccc; font-weight: bold;">${total}</td>
-                <td style="padding: 12px; border: 1px solid #ccc;">${rate}</td>
-                <td style="padding: 12px; border: 1px solid #ccc;">${avg}</td>
-                <td style="padding: 12px; border: 1px solid #ccc; font-weight: bold; background: #f9fafb;">${comp}</td>
-            </tr>
-        </table>
+        <div class="flex items-center gap-2 mb-4 mt-2">
+            <div style="width: 4px; height: 20px; background: #0a192f;"></div>
+            <h3 class="text-xl font-bold" style="color: #0a192f;">Resumen Ejecutivo de Rendimiento</h3>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.25rem;">
+                <p style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: #64748b; margin-bottom: 0.5rem; letter-spacing: 0.05em;">Total Casos Procesados</p>
+                <p style="font-size: 2rem; font-weight: 800; color: #0f172a; line-height: 1;">${total}</p>
+            </div>
+            
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.25rem;">
+                <p style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: #64748b; margin-bottom: 0.5rem; letter-spacing: 0.05em;">Tasa de Cierre</p>
+                <div style="display: flex; align-items: baseline; gap: 0.25rem;">
+                    <p style="font-size: 2rem; font-weight: 800; color: #0f172a; line-height: 1;">${rate.replace('%', '')}</p>
+                    <span style="font-weight: bold; color: #64748b;">%</span>
+                </div>
+            </div>
+            
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.25rem;">
+                <p style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: #64748b; margin-bottom: 0.5rem; letter-spacing: 0.05em;">Tiempo Promedio</p>
+                <div style="display: flex; align-items: baseline; gap: 0.25rem;">
+                    <p style="font-size: 2rem; font-weight: 800; color: #0f172a; line-height: 1;">${avg.replace(' d', '')}</p>
+                    <span style="font-weight: bold; color: #64748b;">días</span>
+                </div>
+            </div>
+            
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 1.25rem; position: relative; overflow: hidden;">
+                <div style="position: absolute; right: -10px; bottom: -10px; opacity: 0.1; color: #2563eb;">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                </div>
+                <p style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: #1e40af; margin-bottom: 0.5rem; letter-spacing: 0.05em; position: relative;">Cumplimiento a Tiempo</p>
+                <div style="display: flex; align-items: baseline; gap: 0.25rem; position: relative;">
+                    <p style="font-size: 2rem; font-weight: 800; color: #1d4ed8; line-height: 1;">${comp.replace('%', '')}</p>
+                    <span style="font-weight: bold; color: #1e40af;">%</span>
+                </div>
+            </div>
+        </div>
 
         <div class="mt-8 text-xs text-center" style="color: #666;">
             <p>Documento oficial generado automáticamente por el Sistema de Investigaciones Relacionales CANTV.</p>
@@ -2466,48 +2489,82 @@ function renderReportesMensuales() {
         .filter(d => d.tipo === 'reporte_mensual')
         .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
 
-    let rows = '';
+    let gridReportes = '';
     if (reportes.length === 0) {
-        rows = `<tr><td colspan="3" class="text-center p-6 text-muted">Aún no se ha generado ningún reporte mensual. Se genera automáticamente el último día de cada mes.</td></tr>`;
+        gridReportes = `<div class="glass-card text-center p-8 text-muted col-span-full border-dashed border-2">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" class="mx-auto mb-4 opacity-50"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <p>Aún no se ha generado ningún reporte mensual.</p><p class="text-xs mt-2">El sistema generará el primero automáticamente el último día de este mes.</p>
+        </div>`;
     } else {
-        rows = reportes.map(d => `<tr class="table-row">
-            <td class="font-bold">${d.nombreOriginal}</td>
-            <td>${new Date(d.fecha).toLocaleDateString('es-VE', {day:'2-digit',month:'long',year:'numeric'})}</td>
-            <td class="text-right"><button class="btn btn-secondary btn-sm" onclick="openStoredFileUrl(decodeURIComponent('${encodeURIComponent(d.ruta)}'))">Ver Reporte</button></td>
-        </tr>`).join('');
+        gridReportes = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">` + 
+            reportes.map(d => `
+            <div class="glass-card flex flex-col justify-between" style="padding: 1.5rem; transition: all 0.3s; border-top: 4px solid var(--cantv-blue-base);">
+                <div class="flex items-start gap-4 mb-6">
+                    <div style="background: rgba(37,99,235,0.15); padding: 0.8rem; border-radius: 12px; color: var(--cantv-blue-light);">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                    </div>
+                    <div style="flex-1; min-width: 0;">
+                        <h3 class="font-bold text-lg mb-1" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${d.nombreOriginal}">${d.nombreOriginal.replace('.pdf', '')}</h3>
+                        <p class="text-sm text-muted flex items-center gap-1">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                            ${new Date(d.fecha).toLocaleDateString('es-VE', {day:'2-digit',month:'long',year:'numeric'})}
+                        </p>
+                    </div>
+                </div>
+                <button class="btn btn-secondary w-full flex items-center justify-center gap-2" style="background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1);" onclick="openStoredFileUrl(decodeURIComponent('${encodeURIComponent(d.ruta)}'))" onmouseover="this.style.background='var(--cantv-blue-base)'; this.style.borderColor='var(--cantv-blue-base)'; this.style.color='white';" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.borderColor='rgba(255,255,255,0.1)'; this.style.color='inherit';">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    Descargar PDF
+                </button>
+            </div>`).join('') + `</div>`;
     }
 
     const rechazadas = [...db.documentos]
         .filter(d => d.tipo === 'incidencia_rechazada')
         .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
 
-    let rowsRechazadas = '';
+    let gridRechazadas = '';
     if (rechazadas.length === 0) {
-        rowsRechazadas = `<tr><td colspan="3" class="text-center p-6 text-muted">No hay incidencias rechazadas archivadas.</td></tr>`;
+        gridRechazadas = `<div class="glass-card text-center p-8 text-muted border-dashed border-2">
+            <p>No hay constancias de incidencias rechazadas.</p>
+        </div>`;
     } else {
-        rowsRechazadas = rechazadas.map(d => `<tr class="table-row">
-            <td class="font-bold">${d.nombreOriginal}</td>
-            <td>${new Date(d.fecha).toLocaleDateString('es-VE', {day:'2-digit',month:'long',year:'numeric'})}</td>
-            <td class="text-right"><button class="btn btn-secondary btn-sm" onclick="openStoredFileUrl(decodeURIComponent('${encodeURIComponent(d.ruta)}'))">Ver Documento</button></td>
-        </tr>`).join('');
+        gridRechazadas = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">` + 
+            rechazadas.map(d => `
+            <div class="glass-card flex flex-col justify-between" style="padding: 1.25rem; border-top: 3px solid #64748b;">
+                <div class="flex items-center gap-3 mb-4">
+                    <div style="background: rgba(255,255,255,0.1); padding: 0.6rem; border-radius: 8px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+                    </div>
+                    <div style="flex-1; min-width: 0;">
+                        <h4 class="font-bold text-sm mb-1 truncate" title="${d.nombreOriginal}">${d.nombreOriginal}</h4>
+                        <p class="text-xs text-muted">${new Date(d.fecha).toLocaleDateString('es-VE')}</p>
+                    </div>
+                </div>
+                <button class="btn btn-secondary btn-sm w-full" onclick="openStoredFileUrl(decodeURIComponent('${encodeURIComponent(d.ruta)}'))">Ver Archivo</button>
+            </div>`).join('') + `</div>`;
     }
 
-    return `<div class="view-enter">
-        <div class="page-header">
-            <h1 class="page-title">Reportes Mensuales</h1>
+    return `<div class="view-enter max-w-7xl mx-auto">
+        <div class="page-header mb-8">
+            <div>
+                <h1 class="page-title mb-2">Reportes Mensuales Automáticos</h1>
+                <p class="text-sm text-muted" style="max-width: 600px;">Repositorio histórico de reportes de gestión gerencial. El sistema compila y genera automáticamente estos informes en formato PDF durante la noche del último día de cada mes.</p>
+            </div>
         </div>
-        <p class="text-sm text-muted mb-4">Repositorio de reportes de gestión generados automáticamente el último día de cada mes.</p>
-        <div class="glass-card p-0"><table class="table-container m-0 w-full">
-            <thead><tr class="table-header"><th>Reporte</th><th>Fecha de Generación</th><th class="text-right">Acción</th></tr></thead>
-            <tbody>${rows}</tbody>
-        </table></div>
+        
+        ${gridReportes}
 
-        <h2 class="text-xl font-bold mt-8 mb-2">Incidencias Rechazadas (Documentación)</h2>
-        <p class="text-sm text-muted mb-4">Incidencias rechazadas por Gerencia: no generan caso, pero sus adjuntos quedan archivados aquí como constancia.</p>
-        <div class="glass-card p-0"><table class="table-container m-0 w-full">
-            <thead><tr class="table-header"><th>Incidencia</th><th>Fecha de Archivo</th><th class="text-right">Acción</th></tr></thead>
-            <tbody>${rowsRechazadas}</tbody>
-        </table></div>
+        <hr style="border-color: rgba(255,255,255,0.1); margin: 4rem 0;">
+
+        <div class="mb-6">
+            <h2 class="text-xl font-bold mb-2 flex items-center gap-2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>
+                Archivo de Incidencias Rechazadas
+            </h2>
+            <p class="text-sm text-muted">Documentación adjunta a incidencias que fueron rechazadas por Gerencia y no procedieron a investigación.</p>
+        </div>
+        
+        ${gridRechazadas}
     </div>`;
 }
 
