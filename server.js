@@ -790,12 +790,37 @@ function buildReportePdf(titulo, fechaGeneracion, subtitulo, { total, tasaCierre
         pdfHeader(doc, 'Reporte de Gestión', titulo, subtitulo);
 
         pdfSectionTitle(doc, 'Resumen Ejecutivo de Rendimiento');
-        pdfDataTable(doc, [
-            ['Total Casos Procesados', String(total)],
-            ['Tasa de Cierre', `${tasaCierre}%`],
-            ['Tiempo Promedio de Resolución', `${avgDays} días`],
-            ['% Cumplimiento a Tiempo', `${cumplimiento}%`]
-        ]);
+        
+        doc.moveDown(0.5);
+        const startY = doc.y;
+        const col1 = 50; // PDF_MARGIN
+        const cardW = 246; // (512 - 20) / 2
+        const col2 = col1 + cardW + 20;
+        const cardH = 75;
+
+        // 1. Total Casos
+        doc.roundedRect(col1, startY, cardW, cardH, 6).fillAndStroke('#f8fafc', '#e2e8f0');
+        doc.font('Helvetica-Bold').fontSize(8).fillColor('#64748b').text('TOTAL CASOS PROCESADOS', col1 + 15, startY + 18, { characterSpacing: 0.5 });
+        doc.font('Helvetica-Bold').fontSize(28).fillColor('#0f172a').text(String(total), col1 + 15, startY + 32);
+
+        // 2. Tasa de Cierre
+        doc.roundedRect(col2, startY, cardW, cardH, 6).fillAndStroke('#f8fafc', '#e2e8f0');
+        doc.font('Helvetica-Bold').fontSize(8).fillColor('#64748b').text('TASA DE CIERRE', col2 + 15, startY + 18, { characterSpacing: 0.5 });
+        doc.font('Helvetica-Bold').fontSize(28).fillColor('#0f172a').text(`${tasaCierre}%`, col2 + 15, startY + 32);
+
+        const row2Y = startY + cardH + 20;
+
+        // 3. Tiempo Promedio
+        doc.roundedRect(col1, row2Y, cardW, cardH, 6).fillAndStroke('#f8fafc', '#e2e8f0');
+        doc.font('Helvetica-Bold').fontSize(8).fillColor('#64748b').text('TIEMPO PROMEDIO RESOLUCIÓN', col1 + 15, row2Y + 18, { characterSpacing: 0.5 });
+        doc.font('Helvetica-Bold').fontSize(28).fillColor('#0f172a').text(`${avgDays} días`, col1 + 15, row2Y + 32);
+
+        // 4. Cumplimiento a Tiempo (Destacado en Azul)
+        doc.roundedRect(col2, row2Y, cardW, cardH, 6).fillAndStroke('#eff6ff', '#bfdbfe');
+        doc.font('Helvetica-Bold').fontSize(8).fillColor('#1e40af').text('% CUMPLIMIENTO A TIEMPO', col2 + 15, row2Y + 18, { characterSpacing: 0.5 });
+        doc.font('Helvetica-Bold').fontSize(28).fillColor('#1d4ed8').text(`${cumplimiento}%`, col2 + 15, row2Y + 32);
+
+        doc.y = row2Y + cardH + 40;
 
         pdfFooter(doc);
         doc.end();
