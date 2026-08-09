@@ -5493,10 +5493,37 @@ function initializeSelect(select) {
     optionsMenu.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.1)';
     optionsMenu.style.background = '#ffffff';
 
-    const buildOptions = () => {
-        optionsMenu.innerHTML = '';
+    const searchWrapper = document.createElement('div');
+    searchWrapper.style.padding = '8px';
+    searchWrapper.style.borderBottom = '1px solid #e5e7eb';
+    searchWrapper.style.position = 'sticky';
+    searchWrapper.style.top = '0';
+    searchWrapper.style.background = '#ffffff';
+    searchWrapper.style.zIndex = '2';
+
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.placeholder = 'Buscar...';
+    searchInput.className = 'input-field';
+    searchInput.style.padding = '0.4rem 0.6rem';
+    searchInput.style.fontSize = '0.85rem';
+    searchInput.style.width = '100%';
+    
+    searchWrapper.appendChild(searchInput);
+    optionsMenu.appendChild(searchWrapper);
+
+    const optionsList = document.createElement('div');
+    optionsMenu.appendChild(optionsList);
+
+    const buildOptions = (filterText = '') => {
+        optionsList.innerHTML = '';
+        const term = filterText.toLowerCase().trim();
+        let hasVisible = false;
+
         Array.from(select.options).forEach(opt => {
             if(opt.style.display === 'none') return;
+            if(term && !opt.text.toLowerCase().includes(term)) return;
+            hasVisible = true;
             
             const optDiv = document.createElement('div');
             optDiv.className = 'custom-select-option';
@@ -5523,11 +5550,26 @@ function initializeSelect(select) {
                 optionsMenu.style.display = 'none';
                 buildOptions(); 
             });
-            optionsMenu.appendChild(optDiv);
+            optionsList.appendChild(optDiv);
         });
+
+        if(!hasVisible) {
+            const noRes = document.createElement('div');
+            noRes.textContent = 'No se encontraron resultados';
+            noRes.style.padding = '0.65rem 1rem';
+            noRes.style.fontSize = '0.85rem';
+            noRes.style.color = '#6b7280';
+            noRes.style.textAlign = 'center';
+            optionsList.appendChild(noRes);
+        }
     };
     buildOptions();
     wrapper.appendChild(optionsMenu);
+
+    searchInput.addEventListener('input', (e) => {
+        buildOptions(e.target.value);
+    });
+    searchWrapper.addEventListener('click', (e) => e.stopPropagation());
 
     trigger.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -5535,8 +5577,10 @@ function initializeSelect(select) {
         document.querySelectorAll('.custom-select-options').forEach(m => m.style.display = 'none');
         
         if (!isMenuVisible) {
+            searchInput.value = '';
             buildOptions();
             optionsMenu.style.display = 'block';
+            setTimeout(() => searchInput.focus(), 50);
         }
     });
     
