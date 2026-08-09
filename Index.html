@@ -2811,7 +2811,12 @@ function renderSolicitudes() {
                         <button class="btn btn-secondary btn-sm" title="Cerrar" onclick="closeRowMenu(event)" style="padding: 0.4rem; margin-left: auto; background: transparent; border: none; font-size: 1.2rem; color: #fff;">×</button>
                     </div>
                 </div>
-                ${isPinned ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mb-0.5 text-cantv-fuchsia"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path></svg> ' : ''}${isFav ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" class="inline mb-0.5" style="color:#fbbf24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> ' : ''}${s.id}${unread ? ' <span style="width:8px;height:8px;background:var(--cantv-fuchsia);border-radius:50%;display:inline-block;margin-left:5px;"></span>' : ''}
+                <div class="flex items-center gap-1.5 mt-1">
+                    ${isPinned ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-cantv-fuchsia flex-shrink-0"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path></svg>' : ''}
+                    ${isFav ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" class="flex-shrink-0" style="color:#fbbf24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>' : ''}
+                    <span class="font-mono text-sm" style="line-height: 1;">${s.id}</span>
+                    ${unread ? '<span style="width:8px;height:8px;background:var(--cantv-fuchsia);border-radius:50%;flex-shrink:0;"></span>' : ''}
+                </div>
             </td>
             <td>${s.asunto}</td>
             <td><span class="badge" style="${estadoColor}">${estadoLabel}</span></td>
@@ -3679,8 +3684,10 @@ function renderCasos() {
                                 <button class="btn btn-secondary btn-sm" title="Cerrar" onclick="closeRowMenu(event)" style="padding: 0.4rem; margin-left: auto; background: transparent; border: none; font-size: 1.2rem; color: #fff;">×</button>
                             </div>
                         </div>
-                        <div class="row-main-content">
-                        ${isPinned ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mb-0.5 text-cantv-fuchsia"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path></svg> ' : ''}${isFav ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" class="inline mb-0.5" style="color:#fbbf24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> ' : ''}<span class="text-gradient-fuchsia font-mono">${c.id}</span>
+                        <div class="row-main-content flex items-center gap-1.5 mt-1">
+                            ${isPinned ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-cantv-fuchsia flex-shrink-0"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path></svg>' : ''}
+                            ${isFav ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" class="flex-shrink-0" style="color:#fbbf24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>' : ''}
+                            <span class="text-gradient-fuchsia font-mono text-sm" style="line-height: 1;">${c.id}</span>
                         </div>
                     </td>
                     <td>${c.asunto}</td>
