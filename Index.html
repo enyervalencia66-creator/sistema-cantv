@@ -2767,7 +2767,7 @@ function renderReportesMensuales() {
 
     let rows = '';
     if (reportes.length === 0) {
-        rows = `<tr><td colspan="3" class="text-center p-6 text-muted">Aún no se ha generado ningún reporte mensual. Se genera automáticamente el último día de cada mes.</td></tr>`;
+        rows = `<tr><td colspan="3" class="text-center p-6 text-muted">Aún no se ha generado ningún reporte mensual.</td></tr>`;
     } else {
         rows = reportes.map(d => `<tr class="table-row">
             <td class="font-bold">${d.nombreOriginal}</td>
