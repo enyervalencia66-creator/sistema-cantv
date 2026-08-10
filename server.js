@@ -1146,7 +1146,15 @@ app.post('/api/expedientes/referencias', authenticate, async (req, res) => {
         }
         
         const { data, error } = await supabase.from('referencias_laborales').insert({
-            persona_id, referencia_contacto, telefono_contacto, fecha_inicio, fecha_fin, salario, motivo_egreso, soporte_path: url, created_at: new Date().toISOString()
+            persona_id, 
+            referencia_contacto, 
+            telefono_contacto, 
+            fecha_inicio: fecha_inicio || null, 
+            fecha_fin: fecha_fin || null, 
+            salario: salario || null, 
+            motivo_egreso: motivo_egreso || null, 
+            soporte_path: url, 
+            created_at: new Date().toISOString()
         }).select();
         
         if (error) throw error;
