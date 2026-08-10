@@ -127,6 +127,63 @@ body { font-family: var(--font-sans); background: var(--bg-main); background-att
 .text-danger { color: var(--status-high); }
 .hover\:underline:hover { text-decoration: underline; }
 
+/* Tooltips */
+.tooltip-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: help;
+}
+.tooltip-container::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    background: rgba(15, 23, 42, 0.95);
+    color: #fff;
+    padding: 0.6rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: normal;
+    width: max-content;
+    max-width: 280px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 50;
+    pointer-events: none;
+    text-align: center;
+    line-height: 1.4;
+}
+.tooltip-container::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(0);
+    border: 6px solid transparent;
+    border-top-color: rgba(15, 23, 42, 0.95);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 50;
+    pointer-events: none;
+}
+.tooltip-container:hover::after,
+.tooltip-container:hover::before {
+    opacity: 1;
+    visibility: visible;
+}
+.tooltip-container:hover::after {
+    transform: translateX(-50%) translateY(-4px);
+}
+.tooltip-container:hover::before {
+    transform: translateX(-50%) translateY(2px);
+}
+
 /* Cards */
 
 .glass-card {
@@ -2735,17 +2792,25 @@ function renderReportesMensuales() {
     }
 
     return `<div class="view-enter">
-        <div class="page-header">
-            <h1 class="page-title">Reportes Mensuales</h1>
+        <div class="page-header" style="flex-direction: row; align-items: center; justify-content: flex-start; gap: 0.75rem; margin-bottom: 1.5rem;">
+            <h1 class="page-title" style="margin-bottom: 0;">Reportes Mensuales</h1>
+            <span class="tooltip-container text-muted" data-tooltip="Repositorio de reportes de gestión generados automáticamente el último día de cada mes.">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hover:text-cantv-blue-base transition-colors"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+            </span>
         </div>
-        <p class="text-sm text-muted mb-4">Repositorio de reportes de gestión generados automáticamente el último día de cada mes.</p>
+        
         <div class="glass-card p-0"><table class="table-container m-0 w-full">
             <thead><tr class="table-header"><th>Reporte</th><th>Fecha de Generación</th><th class="text-right">Acción</th></tr></thead>
             <tbody>${rows}</tbody>
         </table></div>
 
-        <h2 class="text-xl font-bold mt-8 mb-2">Incidencias Rechazadas (Documentación)</h2>
-        <p class="text-sm text-muted mb-4">Incidencias rechazadas por Gerencia: no generan caso, pero sus adjuntos quedan archivados aquí como constancia.</p>
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-top: 2.5rem; margin-bottom: 1rem;">
+            <h2 class="text-xl font-bold m-0">Incidencias Rechazadas (Documentación)</h2>
+            <span class="tooltip-container text-muted" data-tooltip="Incidencias rechazadas por Gerencia: no generan caso, pero sus adjuntos quedan archivados aquí como constancia.">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hover:text-cantv-blue-base transition-colors"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+            </span>
+        </div>
+        
         <div class="glass-card p-0"><table class="table-container m-0 w-full">
             <thead><tr class="table-header"><th>Incidencia</th><th>Fecha de Archivo</th><th class="text-right">Acción</th></tr></thead>
             <tbody>${rowsRechazadas}</tbody>
