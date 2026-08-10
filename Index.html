@@ -2544,9 +2544,9 @@ function renderDashboard() {
                 <input type="date" id="dashFechaFin" class="input-field w-full" value="${hoyStr}" max="${hoyStr}" onchange="initDashboard()">
             </div>
             <div class="flex-1" style="min-width: 140px;">
-                <button type="button" class="btn btn-secondary w-full flex items-center justify-center gap-2" title="Actualiza los datos y limpia los filtros (vuelve a los últimos 7 días)" onclick="refrescarDashboard()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-                    Últimos 7 días
+                <button type="button" class="btn btn-secondary w-full flex items-center justify-center gap-2 whitespace-nowrap" style="height: 45px;" title="Actualiza los datos y limpia los filtros (vuelve a los últimos 7 días)" onclick="refrescarDashboard()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                    <span class="truncate">Últimos 7 días</span>
                 </button>
             </div>
             ${hasPermission('cerrar_caso') ? `
