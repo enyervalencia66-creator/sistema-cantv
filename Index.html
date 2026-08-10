@@ -2013,7 +2013,6 @@ async function login(e) {
     document.getElementById('password').style.borderColor = '';
     if (!validarFormulario(e.target)) return;
     if (!lockAction(btn, 'Verificando...')) return;
-    document.body.classList.add('login-loading');
     try {
         const res = await fetch('/api/auth/login', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2029,6 +2028,7 @@ async function login(e) {
             if (found) {
                 if (found.estado && found.estado.toLowerCase() === 'inactivo') throw { message: 'Usuario inactivo. Contacte al administrador.' };
                 currentUser = found;
+                document.body.classList.add('login-loading');
                 setTimeout(() => {
                     document.body.classList.remove('login-loading');
                     navigate(firstAccessibleView());
@@ -2037,7 +2037,6 @@ async function login(e) {
             }
             else throw { message: 'Credenciales inválidas' };
         } else if (res.status === 423) {
-            document.body.classList.remove('login-loading');
             // Cuenta bloqueada por 3 intentos fallidos: la única salida es restablecer la
             // contraseña por correo, así que se ofrece el enlace directamente en el error.
             const data = await res.json().catch(() => ({}));
@@ -2061,13 +2060,11 @@ async function login(e) {
             throw { message: data.error === 'Usuario inactivo. Contacte al administrador.' ? data.error : 'Credenciales inválidas. Verifica tu usuario y contraseña.' };
         }
     } catch (err) {
-        document.body.classList.remove('login-loading');
         errorDiv.classList.remove('hidden');
         document.getElementById('loginErrorText').innerText = err.message || 'Credenciales inválidas. Verifica tu usuario y contraseña.';
         document.getElementById('username').style.borderColor = 'var(--status-high)';
         document.getElementById('password').style.borderColor = 'var(--status-high)';
     }
-    document.body.classList.remove('login-loading');
     unlockAction(btn);
 }
 function showUserProfile() {
