@@ -835,8 +835,8 @@ input[type="file"]::file-selector-button:hover { background: #d1d5db; }
                 </select>
             </div>
             <div>
-                <label class="text-xs text-secondary">Soporte (PDF/JPG)</label>
-                <input type="file" id="estudioFile" class="w-full text-xs" accept=".pdf,image/*" required>
+                <label class="text-xs text-secondary">Soporte <span class="text-muted">(Solo PDF, PNG, JPG)</span></label>
+                <input type="file" id="estudioFile" class="w-full text-xs" accept=".pdf,image/png,image/jpeg,image/jpg" required>
             </div>
             <div class="flex gap-2 justify-end mt-4">
                 <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-estudio').classList.add('hidden')">Cancelar</button>
@@ -863,8 +863,8 @@ input[type="file"]::file-selector-button:hover { background: #d1d5db; }
             </div>
             <div><label class="text-xs text-secondary">Motivo de Egreso</label><input type="text" id="refMotivo" class="input-field w-full" maxlength="100"></div>
             <div>
-                <label class="text-xs text-secondary">Soporte (PDF/JPG)</label>
-                <input type="file" id="refFile" class="w-full text-xs" accept=".pdf,image/*" required>
+                <label class="text-xs text-secondary">Soporte <span class="text-muted">(Solo PDF, PNG, JPG)</span></label>
+                <input type="file" id="refFile" class="w-full text-xs" accept=".pdf,image/png,image/jpeg,image/jpg" required>
             </div>
             <div class="flex gap-2 justify-end mt-4">
                 <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-referencia').classList.add('hidden')">Cancelar</button>
@@ -1016,6 +1016,46 @@ function openReferenciaModal(id) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Global file validation based on 'accept' attribute
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.type === 'file') {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const accept = e.target.getAttribute('accept');
+            if (accept) {
+                const acceptedTypes = accept.split(',').map(a => a.trim().toLowerCase());
+                const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+                const fileType = file.type.toLowerCase();
+
+                let isValid = false;
+                for (let type of acceptedTypes) {
+                    if (type.startsWith('.')) {
+                        if (fileExt === type) isValid = true;
+                    } else if (type.endsWith('/*')) {
+                        const baseType = type.split('/')[0];
+                        if (fileType.startsWith(baseType + '/')) isValid = true;
+                    } else {
+                        if (fileType === type) isValid = true;
+                    }
+                }
+
+                if (!isValid) {
+                    e.target.value = ''; // clear the input
+                    
+                    // If it has a related file-upload-zone, reset it
+                    const id = e.target.id;
+                    if (id && document.getElementById(id + 'Name')) {
+                        document.getElementById(id + 'Name').textContent = 'Sin archivo seleccionado';
+                        document.getElementById(id + 'Zone').classList.remove('has-file');
+                    }
+
+                    showToast('Formato inválido. ' + (accept.includes('image') ? 'Solo se permiten archivos PDF e imágenes (JPG, PNG).' : 'Solo se permiten archivos PDF.'), 'error');
+                }
+            }
+        }
+    });
+
     // Formulario de Estudios
     document.getElementById('formEstudio')?.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -3158,10 +3198,10 @@ function renderCreateSolicitud() {
                     <textarea id="solAsunto" class="input-field" required minlength="10" maxlength="200" autocomplete="off" rows="2" style="resize:none; overflow:hidden; padding-top:0.75rem;" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea></div>
                 <div class="form-group"><label class="form-label">Criticidad Percibida</label>
                     <select id="solCrit" class="input-field" required><option value="Baja">Baja</option><option value="Media">Media</option><option value="Alta">Alta</option></select></div>
-                <div class="form-group"><label class="form-label">Documento Soporte 1</label>
+                <div class="form-group"><label class="form-label">Documento Soporte 1 <span class="text-muted" style="font-size:0.75rem; font-weight:normal;">(Solo PDF, PNG, JPG)</span></label>
                     <input type="file" id="solXls" class="input-field" required accept=".pdf,image/png,image/jpeg,image/jpg" style="padding-top:10px;"></div>
                 <div class="form-group mb-6">
-                    <label class="form-label font-bold flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> Constancia o Soporte (2)</label>
+                    <label class="form-label font-bold flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> Constancia o Soporte (2) <span class="text-muted" style="font-size:0.75rem; font-weight:normal;">(Solo PDF, PNG, JPG)</span></label>
                     <input type="file" id="solPpt" class="input-field" required accept=".pdf,image/png,image/jpeg,image/jpg" style="padding-top:10px;"></div>
                 <button type="submit" class="btn btn-primary w-full mt-4">Enviar Incidencia a Gerencia</button>
             </form>
@@ -4296,7 +4336,7 @@ function renderCaseDetail(id) {
             <textarea id="sustText" class="input-field" rows="4" required minlength="20" maxlength="1000" placeholder="Hallazgos y Sustanciación...">${hasExisting ? hasExisting.detalle : ''}</textarea>
             <div class="case-actions-file-row">
                 <div class="form-group">
-                    <label class="form-label" style="font-size:0.8rem">Documento 1 <span style="color:var(--cantv-fuchsia);font-size:0.75rem">*</span></label>
+                    <label class="form-label" style="font-size:0.8rem">Documento 1 <span style="color:var(--cantv-fuchsia);font-size:0.75rem">*</span> <span class="text-muted" style="font-size:0.7rem; font-weight:normal;">(Solo PDF, PNG, JPG)</span></label>
                     <input type="file" id="sustXls" accept=".pdf,image/png,image/jpeg,image/jpg" style="display:none;" onchange="updateFileZone('sustXls','sustXlsZone','sustXlsName')">
                     <div class="file-upload-zone" id="sustXlsZone" onclick="document.getElementById('sustXls').click()">
                         <span class="file-upload-btn">+</span>
@@ -4304,7 +4344,7 @@ function renderCaseDetail(id) {
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label" style="font-size:0.8rem">Documento 2</label>
+                    <label class="form-label" style="font-size:0.8rem">Documento 2 <span class="text-muted" style="font-size:0.7rem; font-weight:normal;">(Solo PDF, PNG, JPG)</span></label>
                     <input type="file" id="sustPpt" accept=".pdf,image/png,image/jpeg,image/jpg" style="display:none;" onchange="updateFileZone('sustPpt','sustPptZone','sustPptName')">
                     <div class="file-upload-zone" id="sustPptZone" onclick="document.getElementById('sustPpt').click()">
                         <span class="file-upload-btn">+</span>
@@ -4344,7 +4384,7 @@ function renderCaseDetail(id) {
     // GERENTE: Cerrar caso
     else if (c.estado === ESTADOS_CASO.REVISION_GERENCIA && hasPermission('cerrar_caso')) {
         actions = `<form onsubmit="cerrarCasoGerencia(event, '${id}')" class="flex flex-col gap-4 mt-4" novalidate>
-            <p class="text-sm text-muted">Cargar Memorándum Final para cerrar el expediente.</p>
+            <p class="text-sm text-muted">Cargar Memorándum Final para cerrar el expediente. <span class="text-xs">(Solo formato PDF)</span></p>
             <input type="file" id="memoPdf" class="input-field" required accept=".pdf" style="padding-top:10px;">
             <button class="btn btn-primary">Aprobar Final, Cerrar Caso y Emitir Memo</button>
         </form>`;
