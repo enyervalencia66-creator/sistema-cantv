@@ -405,7 +405,7 @@ app.put('/api/db/:table/:idColumn/:idValue', authenticate, async (req, res) => {
     try {
         if (req.params.table === 'users') {
             const isEditingSelf = String(req.user.id) === String(req.params.idValue);
-            const isAdmin = req.user.role === 'admin';
+            const isAdmin = req.user.role === 'admin' || req.user.role === 'Gerente';
             if (!isEditingSelf && !isAdmin) {
                 return res.status(403).json({ error: 'Permisos insuficientes para modificar este usuario.' });
             }
@@ -526,7 +526,7 @@ app.post('/api/auth/login', async (req, res) => {
     failedLoginAttempts.delete(username);
 
     // Generate JWT
-    const token = jwt.sign({ username: user.username, email: user.email }, process.env.JWT_SECRET, { expiresIn: '8h' });
+    const token = jwt.sign({ id: user.id, username: user.username, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '8h' });
     res.json({ token, user: stripPassword(user) });
 });
 
