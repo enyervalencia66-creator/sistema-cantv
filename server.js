@@ -405,7 +405,9 @@ app.put('/api/db/:table/:idColumn/:idValue', authenticate, async (req, res) => {
     try {
         if (req.params.table === 'users') {
             const isEditingSelf = String(req.user.id) === String(req.params.idValue);
-            const isAdmin = req.user.role === 'admin' || req.user.role === 'Gerente';
+            const roleObj = dbCache && dbCache.roles ? dbCache.roles.find(r => String(r.id_rol) === String(req.user.role)) : null;
+            const roleName = roleObj ? roleObj.name : String(req.user.role);
+            const isAdmin = roleName === 'admin' || roleName === 'Gerente';
             if (!isEditingSelf && !isAdmin) {
                 return res.status(403).json({ error: 'Permisos insuficientes para modificar este usuario.' });
             }
