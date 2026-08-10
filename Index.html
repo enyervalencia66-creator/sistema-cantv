@@ -3199,10 +3199,20 @@ function renderCreateSolicitud() {
                 <div class="form-group"><label class="form-label">Criticidad Percibida</label>
                     <select id="solCrit" class="input-field" required><option value="Baja">Baja</option><option value="Media">Media</option><option value="Alta">Alta</option></select></div>
                 <div class="form-group"><label class="form-label">Documento Soporte 1 <span class="text-muted" style="font-size:0.75rem; font-weight:normal;">(Solo PDF, PNG, JPG)</span></label>
-                    <input type="file" id="solXls" class="input-field" required accept=".pdf,image/png,image/jpeg,image/jpg" style="padding-top:10px;"></div>
+                    <input type="file" id="solXls" required accept=".pdf,image/png,image/jpeg,image/jpg" style="display:none;" onchange="updateFileZone('solXls','solXlsZone','solXlsName')">
+                    <div class="file-upload-zone" id="solXlsZone" onclick="document.getElementById('solXls').click()">
+                        <span class="file-upload-btn">+</span>
+                        <span class="file-upload-name" id="solXlsName">Sin archivo seleccionado</span>
+                    </div>
+                </div>
                 <div class="form-group mb-6">
                     <label class="form-label font-bold flex items-center gap-2"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> Constancia o Soporte (2) <span class="text-muted" style="font-size:0.75rem; font-weight:normal;">(Solo PDF, PNG, JPG)</span></label>
-                    <input type="file" id="solPpt" class="input-field" required accept=".pdf,image/png,image/jpeg,image/jpg" style="padding-top:10px;"></div>
+                    <input type="file" id="solPpt" required accept=".pdf,image/png,image/jpeg,image/jpg" style="display:none;" onchange="updateFileZone('solPpt','solPptZone','solPptName')">
+                    <div class="file-upload-zone" id="solPptZone" onclick="document.getElementById('solPpt').click()">
+                        <span class="file-upload-btn">+</span>
+                        <span class="file-upload-name" id="solPptName">Sin archivo seleccionado</span>
+                    </div>
+                </div>
                 <button type="submit" class="btn btn-primary w-full mt-4">Enviar Incidencia a Gerencia</button>
             </form>
         </div></div>`;
