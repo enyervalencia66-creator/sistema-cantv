@@ -548,7 +548,47 @@ input[type="file"]::file-selector-button:hover { background: #d1d5db; }
     padding: 2rem;
     background: linear-gradient(160deg, #0a0f1e 0%, #0e1730 45%, #16264d 100%);
     position: relative; overflow: hidden;
+    transition: background 0.8s ease;
 }
+
+/* --- Login Loading Animation --- */
+body.login-loading .auth-page {
+    background: linear-gradient(-45deg, #0e1730, var(--cantv-blue-dark), var(--cantv-fuchsia), #0a0f1e);
+    background-size: 400% 400%;
+    animation: gradient-bg 3s ease infinite;
+}
+@keyframes gradient-bg {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.auth-form-wrap {
+    transition: opacity 0.6s ease, transform 0.6s ease;
+}
+body.login-loading .auth-form-wrap {
+    opacity: 0;
+    transform: scale(0.95);
+    pointer-events: none;
+}
+
+body.login-loading .auth-brand {
+    transform: scale(1.1) translateY(20px);
+    transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+body.login-loading .auth-brand-logo {
+    filter: drop-shadow(0 0 25px rgba(229,0,126,0.4));
+    animation: pulse-glow 2s infinite alternate;
+}
+@keyframes pulse-glow {
+    from { filter: drop-shadow(0 0 15px rgba(229,0,126,0.3)); }
+    to { filter: drop-shadow(0 0 35px rgba(229,0,126,0.7)); }
+}
+body.login-loading .auth-brand-footer {
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+/* -------------------------------- */
 .auth-page { gap: clamp(3rem, 9vw, 8rem); }
 .auth-page::before, .auth-form-panel::before {
     content: '';
@@ -563,8 +603,8 @@ input[type="file"]::file-selector-button:hover { background: #d1d5db; }
     bottom: -280px; left: -260px; pointer-events: none;
 }
 
-.auth-brand { position: relative; z-index: 1; text-align: center; }
-.auth-brand-logo { width: 240px; color: #ffffff; margin: 0 auto; }
+.auth-brand { position: relative; z-index: 1; text-align: center; transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.auth-brand-logo { width: 240px; color: #ffffff; margin: 0 auto; transition: filter 0.8s ease; }
 .auth-brand-divider { width: 40px; height: 2px; background: var(--cantv-fuchsia); border-radius: 2px; margin: 1.5rem auto 1.25rem; opacity: 0.85; }
 .auth-brand-subtitle { color: rgba(255,255,255,0.6); font-size: 0.9rem; letter-spacing: 0.04em; }
 
@@ -1963,6 +2003,7 @@ async function login(e) {
     document.getElementById('password').style.borderColor = '';
     if (!validarFormulario(e.target)) return;
     if (!lockAction(btn, 'Verificando...')) return;
+    document.body.classList.add('login-loading');
     try {
         const res = await fetch('/api/auth/login', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1978,10 +2019,15 @@ async function login(e) {
             if (found) {
                 if (found.estado && found.estado.toLowerCase() === 'inactivo') throw { message: 'Usuario inactivo. Contacte al administrador.' };
                 currentUser = found;
-                navigate(firstAccessibleView());
+                setTimeout(() => {
+                    document.body.classList.remove('login-loading');
+                    navigate(firstAccessibleView());
+                }, 600); // Premium delay to show off the animation
+                return;
             }
             else throw { message: 'Credenciales inválidas' };
         } else if (res.status === 423) {
+            document.body.classList.remove('login-loading');
             // Cuenta bloqueada por 3 intentos fallidos: la única salida es restablecer la
             // contraseña por correo, así que se ofrece el enlace directamente en el error.
             const data = await res.json().catch(() => ({}));
@@ -2005,11 +2051,13 @@ async function login(e) {
             throw { message: data.error === 'Usuario inactivo. Contacte al administrador.' ? data.error : 'Credenciales inválidas. Verifica tu usuario y contraseña.' };
         }
     } catch (err) {
+        document.body.classList.remove('login-loading');
         errorDiv.classList.remove('hidden');
         document.getElementById('loginErrorText').innerText = err.message || 'Credenciales inválidas. Verifica tu usuario y contraseña.';
         document.getElementById('username').style.borderColor = 'var(--status-high)';
         document.getElementById('password').style.borderColor = 'var(--status-high)';
     }
+    document.body.classList.remove('login-loading');
     unlockAction(btn);
 }
 function showUserProfile() {
