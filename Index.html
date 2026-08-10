@@ -5704,6 +5704,14 @@ function adminModalVerUsuario(userId) {
         
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="p-3 rounded-lg border border-gray-100" style="background: var(--glass-bg);">
+                <div class="text-xs text-secondary mb-1">Nombre Completo</div>
+                <div class="font-semibold text-sm">${u.name || u.username}</div>
+            </div>
+            <div class="p-3 rounded-lg border border-gray-100" style="background: var(--glass-bg);">
+                <div class="text-xs text-secondary mb-1">Username</div>
+                <div class="font-semibold text-sm">${u.username}</div>
+            </div>
+            <div class="p-3 rounded-lg border border-gray-100" style="background: var(--glass-bg);">
                 <div class="text-xs text-secondary mb-1">Correo Electrónico</div>
                 <div class="font-semibold text-sm" style="word-break: break-all;">${u.email || 'No registrado'}</div>
             </div>
