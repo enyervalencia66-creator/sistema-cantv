@@ -5406,7 +5406,7 @@ function renderAdminUsers() {
                 <th>Email</th>
                 <th>Rol Actual</th>
                 <th>Estado</th>
-                <th class="text-right">Acciones</th>
+                <th class="text-center">Acciones</th>
             </tr></thead>
             <tbody>
     `;
@@ -5421,8 +5421,8 @@ function renderAdminUsers() {
             <td>${u.email || '-'}</td>
             <td><span class="badge" style="background:var(--glass-bg-strong)">${u.role}</span></td>
             <td><span class="badge ${isInactive || isBloqueado ? 'badge-high' : 'badge-low'}" style="text-transform: capitalize;">${u.estado || 'activo'}</span></td>
-            <td class="text-right flex gap-2 justify-end">
-                <button class="btn btn-secondary btn-sm" onclick="adminModalEditarUsuario('${u.id}')">Editar</button>
+            <td class="text-center flex gap-2 justify-center">
+                <button class="btn btn-secondary btn-sm" onclick="adminModalVerUsuario('${u.id}')">Ver</button>
                 ${isBloqueado
                     ? `<button class="btn btn-primary btn-sm" onclick="adminDesbloquearUsuario('${u.id}')">Desbloquear</button>`
                     : `<button class="btn ${isInactive ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="adminToggleEstado('${u.id}')">${isInactive ? 'Activar' : 'Desactivar'}</button>`}
@@ -5678,6 +5678,61 @@ async function adminCrearUsuario(e) {
     } finally {
         unlockAction(btn);
     }
+}
+
+function adminModalVerUsuario(userId) {
+    const u = db.users.find(x => x.id == userId);
+    if (!u) return;
+    const estadoLower = (u.estado || 'activo').toLowerCase();
+    const isInactive = estadoLower === 'inactivo';
+    const isBloqueado = estadoLower === 'bloqueado';
+    
+    const content = `
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="font-bold text-xl" style="color: var(--cantv-blue-light);">Perfil de Usuario</h3>
+            <button class="btn btn-secondary btn-sm flex items-center gap-2" onclick="adminModalEditarUsuario('${u.id}')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                Editar
+            </button>
+        </div>
+        
+        <div class="flex items-center gap-4 mb-6">
+            <div style="width: 60px; height: 60px; flex-shrink: 0; background:var(--sidebar-gradient); color: #ffffff; box-shadow: 0 4px 14px rgba(37,99,235,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.75rem; font-weight: bold;">
+                ${u.name ? u.name.charAt(0).toUpperCase() : u.username.charAt(0).toUpperCase()}
+            </div>
+            <div>
+                <h4 class="text-xl font-bold" style="color: var(--text-color);">${u.name || u.username}</h4>
+                <p class="text-sm text-secondary">@${u.username}</p>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="p-3 rounded-lg border border-gray-100" style="background: var(--glass-bg);">
+                <div class="text-xs text-secondary mb-1">Correo Electrónico</div>
+                <div class="font-semibold text-sm" style="word-break: break-all;">${u.email || 'No registrado'}</div>
+            </div>
+            <div class="p-3 rounded-lg border border-gray-100" style="background: var(--glass-bg);">
+                <div class="text-xs text-secondary mb-1">Teléfono</div>
+                <div class="font-semibold text-sm">${u.telefono || 'No registrado'}</div>
+            </div>
+            <div class="p-3 rounded-lg border border-gray-100" style="background: var(--glass-bg);">
+                <div class="text-xs text-secondary mb-1">Rol</div>
+                <div class="font-semibold text-sm">${u.role}</div>
+            </div>
+            <div class="p-3 rounded-lg border border-gray-100" style="background: var(--glass-bg);">
+                <div class="text-xs text-secondary mb-1">Región</div>
+                <div class="font-semibold text-sm">${u.region || 'Nacional'}</div>
+            </div>
+            <div class="p-3 rounded-lg border border-gray-100 sm:col-span-2" style="background: var(--glass-bg);">
+                <div class="text-xs text-secondary mb-1">Estado</div>
+                <div><span class="badge ${isInactive || isBloqueado ? 'badge-high' : 'badge-low'}" style="text-transform: capitalize;">${u.estado || 'activo'}</span></div>
+            </div>
+        </div>
+        <div class="mt-6 flex justify-end">
+            <button class="btn btn-primary" onclick="closeModalUI()">Cerrar</button>
+        </div>
+    `;
+    createModalUI(content);
 }
 
 async function adminModalEditarUsuario(userId) {
