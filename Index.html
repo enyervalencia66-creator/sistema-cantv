@@ -352,7 +352,7 @@ h1, h2, h3 { letter-spacing: -0.01em; color: var(--text-primary); font-weight: 6
 
 /* Layout */
 #app { height: 100vh; display: flex; flex-direction: column; }
-.main-layout { display: flex; height: 100vh; overflow: hidden; width: 100%; position: relative; }
+.main-layout { display: flex; height: 100vh; overflow: hidden; width: 100%; position: relative; animation: fadeIn 0.8s ease-out forwards; }
 .main-layout::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--brand-gradient); z-index: 200; }
 .sidebar { position: relative; width: 260px; background: var(--sidebar-gradient); border-right: 1px solid rgba(255,255,255,0.06); padding: 1.25rem 1rem; display: flex; flex-direction: column; z-index: 10; overflow: hidden; color: rgba(255,255,255,0.85); transition: width 0.25s ease; }
 .sidebar::after { content: ''; position: absolute; width: 420px; height: 420px; border-radius: 50%; background: radial-gradient(circle, rgba(229,0,126,0.10) 0%, rgba(229,0,126,0) 65%); top: -160px; right: -180px; pointer-events: none; }
