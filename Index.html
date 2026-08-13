@@ -760,11 +760,19 @@ body.login-loading .auth-brand-footer {
     }
     .btn-fab-mobile span { display: none !important; }
     .btn-fab-mobile svg { margin: 0 !important; width: 28px !important; height: 28px !important; flex-shrink: 0; }
+    .timeline-circle { width: 28px !important; height: 28px !important; font-size: 0.75rem !important; }
+}
 
-    /* 4. Envoltorio para Pestañas (Tabs) con Scroll Horizontal */
-    .tabs-wrapper { overflow-x: auto; flex-wrap: nowrap !important; padding-bottom: 4px; -webkit-overflow-scrolling: touch; display: flex; width: 100%; }
-    .tabs-wrapper::-webkit-scrollbar { display: none; }
-    .tabs-wrapper .btn { flex-shrink: 0; }
+@media (max-width: 640px) {
+    .step-label:not(.step-label-active) {
+        display: none !important;
+    }
+}
+
+/* 4. Envoltorio para Pestañas (Tabs) con Scroll Horizontal */
+.tabs-wrapper { overflow-x: auto; flex-wrap: nowrap !important; padding-bottom: 4px; -webkit-overflow-scrolling: touch; display: flex; width: 100%; }
+.tabs-wrapper::-webkit-scrollbar { display: none; }
+.tabs-wrapper .btn { flex-shrink: 0; }
 
     /* 5. Grillas (Formularios y Detalles) */
     .form-grid { grid-template-columns: 1fr !important; }
@@ -4517,7 +4525,7 @@ function renderCaseDetail(id) {
             stepsHtml += `<div class="relative z-10 timeline-step" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;flex:0 0 32px;width:32px;" onclick="toggleTimelinePin(this)">
                 <div class="timeline-tooltip" style="background:#0f172a;color:white;">${tip}<div style="position:absolute;top:100%;left:50%;transform:translateX(-50%);border-width:5px;border-style:solid;border-color:#0f172a transparent transparent transparent;"></div></div>
                 <div class="timeline-circle" style="position:relative;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:0.85rem;transition:all 0.2s;${circleStyle}">${circleContent}${dotHtml}</div>
-                <div class="text-xs" style="margin-top:0.6rem;position:absolute;top:100%;left:50%;transform:translateX(-50%);white-space:nowrap;${labelStyle}">${phase.name}</div>
+                <div class="text-xs step-label ${isActive ? 'step-label-active' : ''}" style="margin-top:0.6rem;position:absolute;top:100%;left:50%;transform:translateX(-50%);white-space:nowrap;${labelStyle}">${phase.name}</div>
             </div>`;
         });
 
