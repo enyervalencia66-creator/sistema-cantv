@@ -878,7 +878,7 @@ function pdfLinkList(doc, items, baseUrl) {
 
 // Arma el PDF del reporte mensual (tabla de KPIs) y devuelve el buffer ya generado.
 // `subtitulo` es la línea bajo el título (ej. "Generado automáticamente..." o "Generado por: Fulano").
-function buildReportePdf(titulo, fechaGeneracion, subtitulo, { total, tasaCierre, avgDays, cumplimiento, trabajados, enProceso, rechazadas }) {
+function buildReportePdf(titulo, fechaGeneracion, subtitulo, { total, tasaCierre, avgDays, cumplimiento, trabajados, enProceso, rechazadas, listaDetalle, appUrl }) {
     return new Promise((resolve, reject) => {
         const doc = new PDFDocument({ size: 'LETTER', margin: 50, bufferPages: true });
         const chunks = [];
@@ -931,6 +931,51 @@ function buildReportePdf(titulo, fechaGeneracion, subtitulo, { total, tasaCierre
         ]);
 
         doc.y += 20;
+
+        // Detalle de Casos con Enlaces
+        if (listaDetalle && listaDetalle.length > 0) {
+            if (doc.y > doc.page.height - 150) doc.addPage();
+            pdfSectionTitle(doc, 'Detalle de Casos del Período');
+            doc.moveDown(0.5);
+
+            const tableTop = doc.y;
+            const w1 = 150, w2 = 180, w3 = 100, w4 = 80;
+            const x1 = PDF_MARGIN, x2 = x1 + w1, x3 = x2 + w2, x4 = x3 + w3;
+
+            // Encabezados
+            doc.font('Helvetica-Bold').fontSize(9).fillColor('#64748b');
+            doc.text('ID', x1, tableTop, { width: w1 });
+            doc.text('Asunto', x2, tableTop, { width: w2 });
+            doc.text('Estado', x3, tableTop, { width: w3 });
+            doc.text('Enlace', x4, tableTop, { width: w4, align: 'right' });
+            
+            doc.moveTo(PDF_MARGIN, doc.y + 5).lineTo(doc.page.width - PDF_MARGIN, doc.y + 5).strokeColor('#e2e8f0').lineWidth(1).stroke();
+            doc.y += 12;
+
+            doc.font('Helvetica').fontSize(9);
+            listaDetalle.forEach((item, i) => {
+                if (doc.y > doc.page.height - 50) {
+                    doc.addPage();
+                    doc.y = PDF_MARGIN;
+                }
+                const rowY = doc.y;
+                
+                doc.fillColor('#0f172a').text(item.id, x1, rowY, { width: w1 });
+                // truncate asunto
+                const shortAsunto = item.asunto.length > 30 ? item.asunto.substring(0, 30) + '...' : item.asunto;
+                doc.fillColor('#475569').text(shortAsunto, x2, rowY, { width: w2 });
+                doc.fillColor('#475569').text(item.estado, x3, rowY, { width: w3 });
+
+                // Link
+                const linkView = item.typeLink === 'solicitud' ? 'solicitud-detail' : 'case-detail';
+                const linkUrl = `${appUrl || 'http://localhost'}/?view=${linkView}&id=${encodeURIComponent(item.id)}`;
+                doc.fillColor(PDF_BRAND_BLUE).text('Ver Detalle', x4, rowY, { width: w4, align: 'right', link: linkUrl, underline: true });
+
+                doc.moveTo(PDF_MARGIN, doc.y + 5).lineTo(doc.page.width - PDF_MARGIN, doc.y + 5).strokeColor('#f1f5f9').stroke();
+                doc.y += 12;
+            });
+            doc.y += 20;
+        }
 
         pdfFooter(doc);
         doc.end();
@@ -1183,14 +1228,19 @@ app.post('/api/expedientes/referencias', authenticate, async (req, res) => {
 // Devuelve el PDF directamente como descarga, sin depender del diálogo de impresión del navegador.
 app.post('/api/reports/pdf', authenticate, async (req, res) => {
     try {
-        const { titulo, generadoPor, total, tasaCierre, avgDays, cumplimiento, trabajados, enProceso, rechazadas } = req.body;
+        const { titulo, generadoPor, total, tasaCierre, avgDays, cumplimiento, trabajados, enProceso, rechazadas, listaDetalle } = req.body;
+        
+        // Determinar appUrl dinámicamente si es posible, o usar el referer.
+        const origin = req.headers.referer ? new URL(req.headers.referer).origin : 'http://localhost';
+        
         const pdfBuffer = await buildReportePdf(
             titulo || 'Reporte de Gestión',
             new Date().toLocaleDateString('es-VE'),
             generadoPor ? `Generado por: ${generadoPor}` : 'Generado por el sistema.',
             { 
                 total: total || 0, tasaCierre: tasaCierre || 0, avgDays: avgDays || 0, cumplimiento: cumplimiento || 0,
-                trabajados: trabajados || 0, enProceso: enProceso || 0, rechazadas: rechazadas || 0
+                trabajados: trabajados || 0, enProceso: enProceso || 0, rechazadas: rechazadas || 0,
+                listaDetalle: listaDetalle || [], appUrl: origin
             }
         );
         res.setHeader('Content-Type', 'application/pdf');

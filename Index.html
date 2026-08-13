@@ -2038,7 +2038,13 @@ async function login(e) {
                 setTimeout(() => {
                     const doNav = () => {
                         document.body.classList.remove('login-loading');
-                        navigate(firstAccessibleView());
+                        if (deepLinkObj) {
+                            const to = deepLinkObj;
+                            deepLinkObj = null;
+                            navigate(to.view, to.params);
+                        } else {
+                            navigate(firstAccessibleView());
+                        }
                     };
                     if (document.startViewTransition) {
                         document.documentElement.style.setProperty('--view-transition-duration', '0.6s');
@@ -2715,6 +2721,25 @@ function renderDashboard() {
             </table>
         </div>
 
+        <div class="glass-card mb-6">
+            <h3 class="font-bold mb-4 text-lg">Detalle de Casos del Período</h3>
+            <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                <table class="w-full">
+                    <thead>
+                        <tr>
+                            <th>ID / Asunto</th>
+                            <th>Estado</th>
+                            <th>Tipo</th>
+                            <th class="text-center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dashDetalleTable">
+                        <tr><td colspan="4" class="text-center p-4 text-muted">Cargando detalles...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="form-grid">
             <div class="glass-card flex flex-col">
                 <h3 class="font-bold mb-4">Casos Resueltos por Especialista</h3>
@@ -2738,6 +2763,20 @@ function renderReportPreview() {
     const enProceso = document.getElementById('dashEnProceso') ? document.getElementById('dashEnProceso').innerText : '0';
     const rechazadas = document.getElementById('dashRechazadas') ? document.getElementById('dashRechazadas').innerText : '0';
     
+    let rowsHTML = '<tr><td colspan="3" style="padding: 12px; text-align: center; border: 1px solid #ccc;">No hay registros en este período.</td></tr>';
+    if (window.currentDashboardDetalle && window.currentDashboardDetalle.length > 0) {
+        rowsHTML = window.currentDashboardDetalle.map(item => `
+            <tr>
+                <td style="padding: 8px; border: 1px solid #ccc;">
+                    <strong>${item.id}</strong><br>
+                    <span style="color:#666;">${item.asunto.length > 30 ? item.asunto.substring(0, 30) + '...' : item.asunto}</span>
+                </td>
+                <td style="padding: 8px; border: 1px solid #ccc;">${item.estado}</td>
+                <td style="padding: 8px; border: 1px solid #ccc;">${item.tipo}</td>
+            </tr>
+        `).join('');
+    }
+
     return `<div class="view-enter max-w-5xl mx-auto" style="background: white; color: black; padding: 3rem; border-radius: 8px;">
         <div class="flex justify-between items-center border-b pb-6 mb-6" style="border-color: #ccc;">
             <div style="width: 180px; color: black;">
@@ -2781,6 +2820,20 @@ function renderReportPreview() {
                 <td style="padding: 10px; border-bottom: 1px solid #ccc; text-align: right; font-weight: bold; color: #dc2626;">${rechazadas}</td>
             </tr>
         </table>
+        
+        <h3 class="text-xl font-bold mb-4">Detalle de Casos del Período</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 2rem; font-size: 0.75rem;">
+            <thead style="background: #f3f4f6;">
+                <tr>
+                    <th style="padding: 8px; border: 1px solid #ccc; text-align: left;">ID / Asunto</th>
+                    <th style="padding: 8px; border: 1px solid #ccc; text-align: left;">Estado</th>
+                    <th style="padding: 8px; border: 1px solid #ccc; text-align: left;">Tipo</th>
+                </tr>
+            </thead>
+            <tbody id="previewDetalleTable">
+                ${rowsHTML}
+            </tbody>
+        </table>
 
         <div class="mt-8 text-xs text-center" style="color: #666;">
             <p>Documento oficial generado automáticamente por el Sistema de Investigaciones Relacionales CANTV.</p>
@@ -2806,7 +2859,7 @@ async function descargarReportePdf(e) {
     
     const trabajados = document.getElementById('dashTrabajados') ? document.getElementById('dashTrabajados').innerText : '0';
     const enProceso = document.getElementById('dashEnProceso') ? document.getElementById('dashEnProceso').innerText : '0';
-    const rechazadas = document.getElementById('dashRechazadas') ? document.getElementById('dashRechazadas').innerText : '0';
+    const rechazadasCount = document.getElementById('dashRechazadas') ? document.getElementById('dashRechazadas').innerText : '0';
 
     try {
         const res = await fetch('/api/reports/pdf', {
@@ -2816,7 +2869,8 @@ async function descargarReportePdf(e) {
                 titulo: 'Reporte de Gestión Mensual',
                 generadoPor: `${currentUser.name} (${currentUser.role})`,
                 total, tasaCierre: rate, avgDays: avg, cumplimiento: comp,
-                trabajados, enProceso, rechazadas
+                trabajados, enProceso, rechazadas: rechazadasCount,
+                listaDetalle: window.currentDashboardDetalle || []
             })
         });
         if (!res.ok) throw new Error('El servidor no pudo generar el PDF.');
@@ -3109,6 +3163,52 @@ function initDashboard() {
     if (elEnProceso) elEnProceso.innerText = enProceso;
     const elRechazadas = document.getElementById('dashRechazadas');
     if (elRechazadas) elRechazadas.innerText = rechazadas;
+
+    // Populate Detailed Cases Table
+    const elDetalle = document.getElementById('dashDetalleTable');
+    if (elDetalle) {
+        let rows = '';
+        const enProcesoList = filtered.filter(c => c.estado !== ESTADOS_CASO.CERRADO);
+        const rechazadasList = solicitudesFiltradas.filter(s => s.estado === 'RECHAZADO' || s.estado === 'Rechazada por Gerencia');
+        
+        // 1. Trabajados (Cerrados)
+        closed.forEach(c => {
+            rows += `<tr class="table-row">
+                <td><div class="font-bold">Caso ${c.id}</div><div class="text-xs text-muted truncate w-48">${c.asunto}</div></td>
+                <td><span class="badge ${badgeClass(c.estado)}">${c.estado}</span></td>
+                <td><span class="badge" style="background:#d1fae5;color:#065f46;border:1px solid #a7f3d0;">Trabajado</span></td>
+                <td class="text-center"><button class="btn btn-secondary btn-sm" onclick="navigate('case-detail', {id:'${c.id}'})">Ver</button></td>
+            </tr>`;
+        });
+        // 2. En Proceso
+        enProcesoList.forEach(c => {
+            rows += `<tr class="table-row">
+                <td><div class="font-bold">Caso ${c.id}</div><div class="text-xs text-muted truncate w-48">${c.asunto}</div></td>
+                <td><span class="badge ${badgeClass(c.estado)}">${c.estado}</span></td>
+                <td><span class="badge" style="background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe;">En Proceso</span></td>
+                <td class="text-center"><button class="btn btn-secondary btn-sm" onclick="navigate('case-detail', {id:'${c.id}'})">Ver</button></td>
+            </tr>`;
+        });
+        // 3. Rechazadas
+        rechazadasList.forEach(s => {
+            rows += `<tr class="table-row">
+                <td><div class="font-bold">Incidencia ${s.id}</div><div class="text-xs text-muted truncate w-48">${s.asunto}</div></td>
+                <td><span class="badge" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;">Rechazada</span></td>
+                <td><span class="badge" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;">Rechazada</span></td>
+                <td class="text-center"><button class="btn btn-secondary btn-sm" onclick="navigate('solicitud-detail', {id:'${s.id}'})">Ver</button></td>
+            </tr>`;
+        });
+        
+        if (!rows) rows = '<tr><td colspan="4" class="text-center p-4 text-muted">No hay registros en este período.</td></tr>';
+        elDetalle.innerHTML = rows;
+
+        // Guarda globalmente para uso del Preview y el PDF
+        window.currentDashboardDetalle = [
+            ...closed.map(c => ({ id: c.id, asunto: c.asunto, estado: c.estado, tipo: 'Trabajado', typeLink: 'case' })),
+            ...enProcesoList.map(c => ({ id: c.id, asunto: c.asunto, estado: c.estado, tipo: 'En Proceso', typeLink: 'case' })),
+            ...rechazadasList.map(s => ({ id: s.id, asunto: s.asunto, estado: 'Rechazada', tipo: 'Rechazada', typeLink: 'solicitud' }))
+        ];
+    }
 
     // Chart 1: Specialists
     const espData = {};
@@ -6043,6 +6143,15 @@ function toggleTimelinePin(el) {
     }
 }
 
+let deepLinkObj = null;
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.has('view')) {
+    deepLinkObj = { view: urlParams.get('view'), params: {} };
+    for (const [k, v] of urlParams.entries()) {
+        if (k !== 'view') deepLinkObj.params[k] = v;
+    }
+}
+
 async function bootApp() {
     // /api/db/init ahora exige sesión: si no hay token guardado, ni se intenta (así un visitante
     // sin loguearse nunca recibe ningún dato). Si el token existe pero ya no es válido (expiró o
@@ -6056,6 +6165,11 @@ async function bootApp() {
             if (found && (!found.estado || found.estado.toLowerCase() !== 'inactivo')) {
                 currentUser = found;
                 resetInactivityTimer();
+                if (deepLinkObj) {
+                    const to = deepLinkObj;
+                    deepLinkObj = null;
+                    return navigate(to.view, to.params);
+                }
                 return navigate('casos');
             }
         } catch (e) {
