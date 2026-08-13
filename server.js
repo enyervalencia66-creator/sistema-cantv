@@ -325,10 +325,46 @@ async function prefetchData() {
 }
 prefetchData();
 
+function filterCacheForUser(cache, userReq) {
+    if (!cache) return cache;
+    const roleObj = cache.roles ? cache.roles.find(r => String(r.id_rol) === String(userReq.role)) : null;
+    const roleName = roleObj ? roleObj.name : String(userReq.role);
+    const isAdmin = roleName === 'admin' || roleName === 'Gerente';
+    const isCoord = roleName === 'Coordinador';
+    const isEspecialista = roleName === 'Especialista';
+    
+    if (isAdmin) return cache;
+    
+    let filtered = { ...cache };
+    if (isCoord) {
+        filtered.users = (cache.users || []).filter(u => String(u.regions) === String(userReq.regions) || String(u.id) === String(userReq.id));
+        filtered.investigaciones = (cache.investigaciones || []).filter(c => String(c.region) === String(userReq.regions));
+        filtered.solicitudes = (cache.solicitudes || []).filter(s => String(s.region) === String(userReq.regions));
+        filtered.notificaciones = (cache.notificaciones || []).filter(n => n.user_id === userReq.username);
+    } else if (isEspecialista) {
+        filtered.users = (cache.users || []).filter(u => String(u.id) === String(userReq.id));
+        filtered.investigaciones = (cache.investigaciones || []).filter(c => c.asignado_a === userReq.username);
+        filtered.solicitudes = (cache.solicitudes || []).filter(s => s.usuario_solicitante === userReq.username || s.asignado_a === userReq.username);
+        filtered.notificaciones = (cache.notificaciones || []).filter(n => n.user_id === userReq.username);
+    } else {
+        filtered.users = (cache.users || []).filter(u => String(u.id) === String(userReq.id));
+        filtered.investigaciones = [];
+        filtered.solicitudes = [];
+        filtered.notificaciones = (cache.notificaciones || []).filter(n => n.user_id === userReq.username);
+    }
+    
+    const validInvIds = new Set((filtered.investigaciones || []).map(i => i.id));
+    filtered.estadoHistorial = (cache.estadoHistorial || []).filter(h => validInvIds.has(h.investigacion_id));
+    filtered.comentarios = (cache.comentarios || []).filter(c => validInvIds.has(c.investigacion_id));
+    filtered.invPersona = (cache.invPersona || []).filter(ip => validInvIds.has(ip.investigacion_id));
+    
+    return filtered;
+}
+
 app.get('/api/db/init', authenticate, async (req, res) => {
     try {
         if (dbCache && (Date.now() - dbCacheTime) < DB_CACHE_TTL_MS) {
-            return res.json(dbCache);
+            return res.json(filterCacheForUser(dbCache, req.user));
         }
 
         const [users, solicitudes, investigaciones, estadoHistorial, comentarios, invPersona, personas, estudios, referencias, roles, permissions, roleHasPermissions, positions, regions, units, general_managements, line_managements, notificaciones, documents] = await Promise.all([
@@ -376,7 +412,7 @@ app.get('/api/db/init', authenticate, async (req, res) => {
         };
         dbCache = newData;
         dbCacheTime = Date.now();
-        res.json(newData);
+        res.json(filterCacheForUser(newData, req.user));
     } catch (e) {
         console.error(e);
         res.status(500).json({ error: e.message });
