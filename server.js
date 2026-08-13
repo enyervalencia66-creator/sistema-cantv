@@ -429,6 +429,28 @@ app.post('/api/upload', authenticate, async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/api/upload/signed-url', authenticate, async (req, res) => {
+    try {
+        const { fileName } = req.body;
+        if (!fileName) return res.status(400).json({ error: 'No fileName provided' });
+        
+        const uniquePath = `${Date.now()}_${fileName.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+        
+        const { data, error } = await supabase.storage.from(DOCUMENTS_BUCKET).createSignedUploadUrl(uniquePath);
+        if (error) throw error;
+        
+        const { data: publicData } = supabase.storage.from(DOCUMENTS_BUCKET).getPublicUrl(uniquePath);
+        
+        // Supabase sometimes returns a relative URL for signedUrl. We prepend the Supabase URL if needed.
+        let finalSignedUrl = data.signedUrl;
+        if (finalSignedUrl && finalSignedUrl.startsWith('/')) {
+            finalSignedUrl = process.env.SUPABASE_URL + finalSignedUrl;
+        }
+        
+        res.json({ success: true, signedUrl: finalSignedUrl, publicUrl: publicData.publicUrl });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/db/:table', authenticate, async (req, res) => {
     try {
         const roleObj = dbCache && dbCache.roles ? dbCache.roles.find(r => String(r.id_rol) === String(req.user.role)) : null;

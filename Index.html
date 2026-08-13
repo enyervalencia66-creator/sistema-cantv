@@ -3462,6 +3462,27 @@ function readFileAsDataURL(file) {
     });
 }
 
+// Nueva Helper: Subida directa a Supabase usando Signed URLs
+async function uploadFileDirect(file) {
+    if (!file) return null;
+    const res = await fetch('/api/upload/signed-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: file.name })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || "No se pudo obtener el ticket de subida.");
+    
+    const uploadRes = await fetch(data.signedUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
+        body: file
+    });
+    if (!uploadRes.ok) throw new Error("Error subiendo el archivo directo a Supabase");
+    
+    return data.publicUrl;
+}
+
 function abrirImagenInterna(url, nombre) {
     const overlay = document.createElement('div');
     overlay.id = 'imgViewerOverlay';
@@ -3700,19 +3721,12 @@ async function crearSolicitud(e) {
     try {
         const f1 = document.getElementById('solXls').files[0];
         const f2 = document.getElementById('solPpt').files[0];
-        const [adj1, adj2] = await Promise.all([readFileAsDataURL(f1), readFileAsDataURL(f2)]);
 
         let url1 = null;
         let url2 = null;
 
-        if (adj1 && f1) {
-            const u1Res = await fetch('/api/upload', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({fileBase64: adj1, fileName: f1.name}) });
-            if(u1Res.ok) url1 = (await u1Res.json()).url;
-        }
-        if (adj2 && f2) {
-            const u2Res = await fetch('/api/upload', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({fileBase64: adj2, fileName: f2.name}) });
-            if(u2Res.ok) url2 = (await u2Res.json()).url;
-        }
+        if (f1) url1 = await uploadFileDirect(f1);
+        if (f2) url2 = await uploadFileDirect(f2);
 
         const payload = {
             tipo_solicitud: document.getElementById('solAsunto').value,
@@ -4876,19 +4890,12 @@ async function submitSust(e, id) {
     pendingInvolucradosRemove = [];
 
     const f2 = document.getElementById('sustPpt').files[0];
-    const [adj1, adj2] = await Promise.all([readFileAsDataURL(f1), readFileAsDataURL(f2)]);
 
     let url1 = hasExisting ? hasExisting.xls : null;
     let url2 = hasExisting ? hasExisting.ppt : null;
 
-    if (adj1 && f1) {
-        const u1Res = await fetch('/api/upload', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({fileBase64: adj1, fileName: f1.name}) });
-        if(u1Res.ok) url1 = (await u1Res.json()).url;
-    }
-    if (adj2 && f2) {
-        const u2Res = await fetch('/api/upload', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({fileBase64: adj2, fileName: f2.name}) });
-        if(u2Res.ok) url2 = (await u2Res.json()).url;
-    }
+    if (f1) url1 = await uploadFileDirect(f1);
+    if (f2) url2 = await uploadFileDirect(f2);
 
     const sustDetalle = document.getElementById('sustText').value;
     const payload = {
@@ -5136,13 +5143,8 @@ async function cerrarCasoGerencia(e, id) {
     try {
         const c = db.casos.find(x => x.id == id);
         const memo = document.getElementById('memoPdf').files[0];
-        const memoBase64 = memo ? await readFileAsDataURL(memo) : null;
-
         let memoUrl = null;
-        if (memoBase64 && memo) {
-            const resUpload = await fetch('/api/upload', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({fileBase64: memoBase64, fileName: memo.name}) });
-            if(resUpload.ok) memoUrl = (await resUpload.json()).url;
-        }
+        if (memo) memoUrl = await uploadFileDirect(memo);
 
         const payload = {
             estatus: ESTADOS_CASO.CERRADO,
