@@ -878,7 +878,7 @@ function pdfLinkList(doc, items, baseUrl) {
 
 // Arma el PDF del reporte mensual (tabla de KPIs) y devuelve el buffer ya generado.
 // `subtitulo` es la línea bajo el título (ej. "Generado automáticamente..." o "Generado por: Fulano").
-function buildReportePdf(titulo, fechaGeneracion, subtitulo, { total, tasaCierre, avgDays, cumplimiento }) {
+function buildReportePdf(titulo, fechaGeneracion, subtitulo, { total, tasaCierre, avgDays, cumplimiento, trabajados, enProceso, rechazadas }) {
     return new Promise((resolve, reject) => {
         const doc = new PDFDocument({ size: 'LETTER', margin: 50, bufferPages: true });
         const chunks = [];
@@ -920,6 +920,17 @@ function buildReportePdf(titulo, fechaGeneracion, subtitulo, { total, tasaCierre
         doc.font('Helvetica-Bold').fontSize(28).fillColor('#1d4ed8').text(`${cumplimiento}%`, col2 + 15, row2Y + 32);
 
         doc.y = row2Y + cardH + 40;
+
+        pdfSectionTitle(doc, 'Resumen de Gestión del Período');
+        doc.moveDown(0.5);
+        
+        pdfDataTable(doc, [
+            ['Casos Trabajados (Cerrados)', String(trabajados || 0)],
+            ['Casos en Proceso (Activos)', String(enProceso || 0)],
+            ['Incidencias Rechazadas', String(rechazadas || 0)]
+        ]);
+
+        doc.y += 20;
 
         pdfFooter(doc);
         doc.end();
@@ -1172,12 +1183,15 @@ app.post('/api/expedientes/referencias', authenticate, async (req, res) => {
 // Devuelve el PDF directamente como descarga, sin depender del diálogo de impresión del navegador.
 app.post('/api/reports/pdf', authenticate, async (req, res) => {
     try {
-        const { titulo, generadoPor, total, tasaCierre, avgDays, cumplimiento } = req.body;
+        const { titulo, generadoPor, total, tasaCierre, avgDays, cumplimiento, trabajados, enProceso, rechazadas } = req.body;
         const pdfBuffer = await buildReportePdf(
             titulo || 'Reporte de Gestión',
             new Date().toLocaleDateString('es-VE'),
             generadoPor ? `Generado por: ${generadoPor}` : 'Generado por el sistema.',
-            { total: total || 0, tasaCierre: tasaCierre || 0, avgDays: avgDays || 0, cumplimiento: cumplimiento || 0 }
+            { 
+                total: total || 0, tasaCierre: tasaCierre || 0, avgDays: avgDays || 0, cumplimiento: cumplimiento || 0,
+                trabajados: trabajados || 0, enProceso: enProceso || 0, rechazadas: rechazadas || 0
+            }
         );
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="Reporte_Gestion_${Date.now()}.pdf"`);

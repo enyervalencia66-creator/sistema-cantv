@@ -2695,6 +2695,26 @@ function renderDashboard() {
             </div>
         </div>
 
+        <div class="glass-card mb-6">
+            <h3 class="font-bold mb-4 text-lg">Resumen de Gestión del Período</h3>
+            <table class="table-container m-0 w-full" style="font-size: 0.95rem;">
+                <tbody>
+                    <tr class="table-row">
+                        <td class="font-semibold" style="width: 70%;">Casos Trabajados (Cerrados)</td>
+                        <td class="text-right font-bold" id="dashTrabajados">0</td>
+                    </tr>
+                    <tr class="table-row">
+                        <td class="font-semibold">Casos en Proceso (Activos)</td>
+                        <td class="text-right font-bold" id="dashEnProceso">0</td>
+                    </tr>
+                    <tr class="table-row">
+                        <td class="font-semibold text-danger">Incidencias Rechazadas</td>
+                        <td class="text-right font-bold text-danger" id="dashRechazadas">0</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
         <div class="form-grid">
             <div class="glass-card flex flex-col">
                 <h3 class="font-bold mb-4">Casos Resueltos por Especialista</h3>
@@ -2713,6 +2733,10 @@ function renderReportPreview() {
     const comp = document.getElementById('kpiCompliance') ? document.getElementById('kpiCompliance').innerText : '0%';
     const rate = document.getElementById('kpiRate') ? document.getElementById('kpiRate').innerText : '0%';
     const avg = document.getElementById('kpiAvgTime') ? document.getElementById('kpiAvgTime').innerText : '0 d';
+    
+    const trabajados = document.getElementById('dashTrabajados') ? document.getElementById('dashTrabajados').innerText : '0';
+    const enProceso = document.getElementById('dashEnProceso') ? document.getElementById('dashEnProceso').innerText : '0';
+    const rechazadas = document.getElementById('dashRechazadas') ? document.getElementById('dashRechazadas').innerText : '0';
     
     return `<div class="view-enter max-w-5xl mx-auto" style="background: white; color: black; padding: 3rem; border-radius: 8px;">
         <div class="flex justify-between items-center border-b pb-6 mb-6" style="border-color: #ccc;">
@@ -2742,6 +2766,22 @@ function renderReportPreview() {
             </tr>
         </table>
 
+        <h3 class="text-xl font-bold mb-4">Resumen de Gestión del Período</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 2rem; font-size: 0.875rem;">
+            <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #ccc; width: 70%;"><strong>Casos Trabajados (Cerrados)</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #ccc; text-align: right; font-weight: bold;">${trabajados}</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #ccc;"><strong>Casos en Proceso (Activos)</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #ccc; text-align: right; font-weight: bold;">${enProceso}</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #ccc; color: #dc2626;"><strong>Incidencias Rechazadas</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #ccc; text-align: right; font-weight: bold; color: #dc2626;">${rechazadas}</td>
+            </tr>
+        </table>
+
         <div class="mt-8 text-xs text-center" style="color: #666;">
             <p>Documento oficial generado automáticamente por el Sistema de Investigaciones Relacionales CANTV.</p>
         </div>
@@ -2763,6 +2803,10 @@ async function descargarReportePdf(e) {
     const rate = document.getElementById('kpiRate') ? document.getElementById('kpiRate').innerText.replace('%', '') : '0';
     const avg = document.getElementById('kpiAvgTime') ? document.getElementById('kpiAvgTime').innerText.replace(' d', '') : '0';
     const comp = document.getElementById('kpiCompliance') ? document.getElementById('kpiCompliance').innerText.replace('%', '') : '0';
+    
+    const trabajados = document.getElementById('dashTrabajados') ? document.getElementById('dashTrabajados').innerText : '0';
+    const enProceso = document.getElementById('dashEnProceso') ? document.getElementById('dashEnProceso').innerText : '0';
+    const rechazadas = document.getElementById('dashRechazadas') ? document.getElementById('dashRechazadas').innerText : '0';
 
     try {
         const res = await fetch('/api/reports/pdf', {
@@ -2771,7 +2815,8 @@ async function descargarReportePdf(e) {
             body: JSON.stringify({
                 titulo: 'Reporte de Gestión Mensual',
                 generadoPor: `${currentUser.name} (${currentUser.role})`,
-                total, tasaCierre: rate, avgDays: avg, cumplimiento: comp
+                total, tasaCierre: rate, avgDays: avg, cumplimiento: comp,
+                trabajados, enProceso, rechazadas
             })
         });
         if (!res.ok) throw new Error('El servidor no pudo generar el PDF.');
@@ -3033,6 +3078,37 @@ function initDashboard() {
     } else {
         document.getElementById('kpiCompliance').innerText = '0%';
     }
+
+    // Calculate Summary Metrics
+    const trabajados = closed.length;
+    const enProceso = filtered.length - closed.length;
+    
+    let solicitudesFiltradas = db.solicitudes;
+    if (region !== 'all') {
+        const rUsers = db.users.filter(u => u.region === region).map(u => u.username);
+        solicitudesFiltradas = solicitudesFiltradas.filter(s => rUsers.includes(s.creadoPor));
+    }
+    if (esp !== 'all') {
+        solicitudesFiltradas = solicitudesFiltradas.filter(s => s.creadoPor === esp);
+    }
+    if (inicioEl && inicioEl.value && finEl && finEl.value) {
+        const inicioMs = new Date(inicioEl.value + 'T00:00:00').getTime();
+        const finMs = new Date(finEl.value + 'T23:59:59.999').getTime();
+        const [desde, hasta] = inicioMs <= finMs ? [inicioMs, finMs] : [finMs, inicioMs];
+        solicitudesFiltradas = solicitudesFiltradas.filter(s => {
+            const t = new Date(s.fecha).getTime();
+            return t >= desde && t <= hasta;
+        });
+    }
+    const rechazadas = solicitudesFiltradas.filter(s => s.estado === 'RECHAZADO' || s.estado === 'Rechazada por Gerencia').length;
+
+    // Update UI Summary Table
+    const elTrabajados = document.getElementById('dashTrabajados');
+    if (elTrabajados) elTrabajados.innerText = trabajados;
+    const elEnProceso = document.getElementById('dashEnProceso');
+    if (elEnProceso) elEnProceso.innerText = enProceso;
+    const elRechazadas = document.getElementById('dashRechazadas');
+    if (elRechazadas) elRechazadas.innerText = rechazadas;
 
     // Chart 1: Specialists
     const espData = {};
