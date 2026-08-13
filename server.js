@@ -206,6 +206,38 @@ const authenticate = (req, res, next) => {
     }
 };
 
+// Middleware global Anti-XSS y limitador de tamaño (Anti-Fuzzing)
+const sanitizeMiddleware = (req, res, next) => {
+    if (!req.body || typeof req.body !== 'object') return next();
+    
+    function sanitizeData(obj) {
+        if (typeof obj === 'string') {
+            // Anti-Fuzzing: prevenir textos anormalmente gigantes (DoS), excepto en subidas de archivos
+            if (obj.length > 50000 && !req.path.includes('/upload') && !obj.startsWith('data:')) {
+                throw new Error('Payload contains extremely large strings');
+            }
+            // Anti-XSS: Escapar etiquetas HTML
+            return obj.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        } else if (Array.isArray(obj)) {
+            return obj.map(sanitizeData);
+        } else if (obj !== null && typeof obj === 'object') {
+            for (let key in obj) {
+                obj[key] = sanitizeData(obj[key]);
+            }
+        }
+        return obj;
+    }
+    
+    try {
+        req.body = sanitizeData(req.body);
+        next();
+    } catch (e) {
+        res.status(413).json({ error: 'Payload Too Large / Malformed Data' });
+    }
+};
+
+app.use('/api/db', sanitizeMiddleware);
+
 // 1. Initial Data Fetch (Replaces direct Supabase fetch in frontend initDB)
 let dbCache = null;
 let dbCacheTime = 0;
