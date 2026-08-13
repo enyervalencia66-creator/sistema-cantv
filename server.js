@@ -363,6 +363,15 @@ app.post('/api/upload', authenticate, async (req, res) => {
 
 app.post('/api/db/:table', authenticate, async (req, res) => {
     try {
+        const roleObj = dbCache && dbCache.roles ? dbCache.roles.find(r => String(r.id_rol) === String(req.user.role)) : null;
+        const roleName = roleObj ? roleObj.name : String(req.user.role);
+        const isAdmin = roleName === 'admin' || roleName === 'Gerente';
+        
+        const adminOnlyTables = ['roles', 'permissions', 'role_has_permissions', 'regions', 'positions', 'units'];
+        if (adminOnlyTables.includes(req.params.table) && !isAdmin) {
+            return res.status(403).json({ error: 'Permisos insuficientes para modificar esta tabla.' });
+        }
+
         // Cualquier contraseña que llegue por esta ruta genérica (p.ej. al crear un usuario nuevo)
         // se hashea antes de tocar la base de datos: nunca se guarda en texto plano.
         if (req.params.table === 'users' && req.body.password) {
@@ -403,13 +412,25 @@ app.post('/api/db/:table', authenticate, async (req, res) => {
 
 app.put('/api/db/:table/:idColumn/:idValue', authenticate, async (req, res) => {
     try {
+        const roleObj = dbCache && dbCache.roles ? dbCache.roles.find(r => String(r.id_rol) === String(req.user.role)) : null;
+        const roleName = roleObj ? roleObj.name : String(req.user.role);
+        const isAdmin = roleName === 'admin' || roleName === 'Gerente';
+        
+        const adminOnlyTables = ['roles', 'permissions', 'role_has_permissions', 'regions', 'positions', 'units'];
+        if (adminOnlyTables.includes(req.params.table) && !isAdmin) {
+            return res.status(403).json({ error: 'Permisos insuficientes para modificar esta tabla.' });
+        }
+
         if (req.params.table === 'users') {
             const isEditingSelf = String(req.user.id) === String(req.params.idValue);
-            const roleObj = dbCache && dbCache.roles ? dbCache.roles.find(r => String(r.id_rol) === String(req.user.role)) : null;
-            const roleName = roleObj ? roleObj.name : String(req.user.role);
-            const isAdmin = roleName === 'admin' || roleName === 'Gerente';
             if (!isEditingSelf && !isAdmin) {
                 return res.status(403).json({ error: 'Permisos insuficientes para modificar este usuario.' });
+            }
+            if (!isAdmin) {
+                delete req.body.role;
+                delete req.body.estado;
+                delete req.body.regions;
+                delete req.body.region_id;
             }
             if (req.body.password) {
                 req.body.password = await bcrypt.hash(req.body.password, BCRYPT_ROUNDS);
@@ -428,6 +449,14 @@ app.put('/api/db/:table/:idColumn/:idValue', authenticate, async (req, res) => {
 // res.ok) y el registro nunca se borraba realmente de la base de datos.
 app.delete('/api/db/:table', authenticate, async (req, res) => {
     try {
+        const roleObj = dbCache && dbCache.roles ? dbCache.roles.find(r => String(r.id_rol) === String(req.user.role)) : null;
+        const roleName = roleObj ? roleObj.name : String(req.user.role);
+        const isAdmin = roleName === 'admin' || roleName === 'Gerente';
+        
+        const adminOnlyTables = ['roles', 'permissions', 'role_has_permissions', 'regions', 'positions', 'units', 'users'];
+        if (adminOnlyTables.includes(req.params.table) && !isAdmin) {
+            return res.status(403).json({ error: 'Permisos insuficientes para modificar esta tabla.' });
+        }
         // WORKAROUND: La base de datos no tiene ON DELETE CASCADE en las foreign keys.
         // Interceptamos borrados de 'personas' e 'investigaciones' para borrar manualmente
         // los hijos primero y evitar el Error 500 (Violación de Clave Foránea).
