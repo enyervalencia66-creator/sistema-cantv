@@ -329,14 +329,16 @@ function filterCacheForUser(cache, userReq) {
     if (!cache) return cache;
     const roleObj = cache.roles ? cache.roles.find(r => String(r.id_rol) === String(userReq.role)) : null;
     const roleName = roleObj ? roleObj.name : String(userReq.role);
-    const isAdmin = roleName === 'admin' || roleName === 'Gerente';
-    const isCoord = roleName === 'Coordinador';
-    const isEspecialista = roleName === 'Especialista';
+    const nameLower = roleName.toLowerCase();
+    
+    const isAdmin = nameLower.includes('admin') || nameLower.includes('gerente');
+    const isCoordOrSuper = nameLower.includes('coordinador') || nameLower.includes('supervisor');
+    const isEspecialista = nameLower.includes('especialista');
     
     if (isAdmin) return cache;
     
     let filtered = { ...cache };
-    if (isCoord) {
+    if (isCoordOrSuper) {
         filtered.users = (cache.users || []).filter(u => String(u.regions) === String(userReq.regions) || String(u.id) === String(userReq.id));
         filtered.investigaciones = (cache.investigaciones || []).filter(c => String(c.region) === String(userReq.regions));
         filtered.solicitudes = (cache.solicitudes || []).filter(s => String(s.region) === String(userReq.regions));
