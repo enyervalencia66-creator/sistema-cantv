@@ -1675,6 +1675,14 @@ function criticidadBadgeClass(criticidad) {
     return 'badge-neutral';
 }
 
+function estadoBadgeClass(estado) {
+    if (!estado) return 'badge-neutral';
+    if (estado === ESTADOS_CASO.CERRADO) return 'badge-low'; // Assuming 'badge-low' is green/finished style in this system, or we can use custom inline
+    if (estado.includes('Pendiente') || estado.includes('Revisión')) return 'badge-crit-media';
+    if (estado === ESTADOS_CASO.SUSTANCIACION) return 'badge-crit-alta';
+    return 'badge-neutral';
+}
+
 async function notifyUser(target, message, linkObj = null) {
     if (target === 'admin') target = ROLES.SUPER;
     if (target === 'coord') target = ROLES.COORD;
@@ -3175,7 +3183,7 @@ function initDashboard() {
         closed.forEach(c => {
             rows += `<tr class="table-row">
                 <td><div class="font-bold">Caso ${c.id}</div><div class="text-xs text-muted truncate w-48">${c.asunto}</div></td>
-                <td><span class="badge ${badgeClass(c.estado)}">${c.estado}</span></td>
+                <td><span class="badge ${estadoBadgeClass(c.estado)}">${c.estado}</span></td>
                 <td><span class="badge" style="background:#d1fae5;color:#065f46;border:1px solid #a7f3d0;">Trabajado</span></td>
                 <td class="text-center"><button class="btn btn-secondary btn-sm" onclick="navigate('case-detail', {id:'${c.id}'})">Ver</button></td>
             </tr>`;
@@ -3184,7 +3192,7 @@ function initDashboard() {
         enProcesoList.forEach(c => {
             rows += `<tr class="table-row">
                 <td><div class="font-bold">Caso ${c.id}</div><div class="text-xs text-muted truncate w-48">${c.asunto}</div></td>
-                <td><span class="badge ${badgeClass(c.estado)}">${c.estado}</span></td>
+                <td><span class="badge ${estadoBadgeClass(c.estado)}">${c.estado}</span></td>
                 <td><span class="badge" style="background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe;">En Proceso</span></td>
                 <td class="text-center"><button class="btn btn-secondary btn-sm" onclick="navigate('case-detail', {id:'${c.id}'})">Ver</button></td>
             </tr>`;
