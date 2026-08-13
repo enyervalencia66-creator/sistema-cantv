@@ -538,6 +538,12 @@ input[type="file"]::file-selector-button:hover { background: #d1d5db; }
 .kanban-header { padding: 1rem; font-weight: bold; font-size: 0.875rem; border-bottom: 1px solid var(--glass-border); background: #f8fafc; display: flex; justify-content: space-between; align-items: center; border-radius: var(--radius-lg) var(--radius-lg) 0 0; color: var(--text-primary); }
 .kanban-cards { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
 .kanban-card { padding: 1rem; }
+::selection { background: var(--cantv-blue); color: white; }
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--view-transition-duration, 0.25s);
+}
 
 /* ============================================================
    Auth / Login
@@ -2030,8 +2036,19 @@ async function login(e) {
                 currentUser = found;
                 document.body.classList.add('login-loading');
                 setTimeout(() => {
-                    document.body.classList.remove('login-loading');
-                    navigate(firstAccessibleView());
+                    const doNav = () => {
+                        document.body.classList.remove('login-loading');
+                        navigate(firstAccessibleView());
+                    };
+                    if (document.startViewTransition) {
+                        document.documentElement.style.setProperty('--view-transition-duration', '0.6s');
+                        const transition = document.startViewTransition(doNav);
+                        transition.finished.finally(() => {
+                            document.documentElement.style.removeProperty('--view-transition-duration');
+                        });
+                    } else {
+                        doNav();
+                    }
                 }, 2000); // Premium delay to let the animation play fully
                 return;
             }
