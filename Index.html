@@ -2710,26 +2710,6 @@ function renderDashboard() {
         </div>
 
         <div class="glass-card mb-6">
-            <h3 class="font-bold mb-4 text-lg">Resumen de Gestión del Período</h3>
-            <table class="table-container m-0 w-full" style="font-size: 0.95rem;">
-                <tbody>
-                    <tr class="table-row">
-                        <td class="font-semibold" style="width: 70%;">Casos Trabajados (Cerrados)</td>
-                        <td class="text-right font-bold" id="dashTrabajados">0</td>
-                    </tr>
-                    <tr class="table-row">
-                        <td class="font-semibold">Casos en Proceso (Activos)</td>
-                        <td class="text-right font-bold" id="dashEnProceso">0</td>
-                    </tr>
-                    <tr class="table-row">
-                        <td class="font-semibold text-danger">Incidencias Rechazadas</td>
-                        <td class="text-right font-bold text-danger" id="dashRechazadas">0</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="glass-card mb-6">
             <h3 class="font-bold mb-4 text-lg">Detalle de Casos del Período</h3>
             <div class="table-container" style="max-height: 400px; overflow-y: auto;">
                 <table class="w-full">
@@ -2738,11 +2718,12 @@ function renderDashboard() {
                             <th>ID / Asunto</th>
                             <th>Estado</th>
                             <th>Tipo</th>
+                            <th class="text-center">Región</th>
                             <th class="text-center">Acción</th>
                         </tr>
                     </thead>
                     <tbody id="dashDetalleTable">
-                        <tr><td colspan="4" class="text-center p-4 text-muted">Cargando detalles...</td></tr>
+                        <tr><td colspan="5" class="text-center p-4 text-muted">Cargando detalles...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -2771,7 +2752,7 @@ function renderReportPreview() {
     const enProceso = document.getElementById('dashEnProceso') ? document.getElementById('dashEnProceso').innerText : '0';
     const rechazadas = document.getElementById('dashRechazadas') ? document.getElementById('dashRechazadas').innerText : '0';
     
-    let rowsHTML = '<tr><td colspan="3" style="padding: 12px; text-align: center; border: 1px solid #ccc;">No hay registros en este período.</td></tr>';
+    let rowsHTML = '<tr><td colspan="4" style="padding: 12px; text-align: center; border: 1px solid #ccc;">No hay registros en este período.</td></tr>';
     if (window.currentDashboardDetalle && window.currentDashboardDetalle.length > 0) {
         rowsHTML = window.currentDashboardDetalle.map(item => `
             <tr>
@@ -2781,6 +2762,7 @@ function renderReportPreview() {
                 </td>
                 <td style="padding: 8px; border: 1px solid #ccc;">${item.estado}</td>
                 <td style="padding: 8px; border: 1px solid #ccc;">${item.tipo}</td>
+                <td style="padding: 8px; border: 1px solid #ccc; text-align: center;">${item.region || 'Nacional'}</td>
             </tr>
         `).join('');
     }
@@ -2812,22 +2794,6 @@ function renderReportPreview() {
                 <td style="padding: 12px; border: 1px solid #ccc; font-weight: bold; background: #f9fafb;">${comp}</td>
             </tr>
         </table>
-
-        <h3 class="text-xl font-bold mb-4">Resumen de Gestión del Período</h3>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 2rem; font-size: 0.875rem;">
-            <tr>
-                <td style="padding: 10px; border-bottom: 1px solid #ccc; width: 70%;"><strong>Casos Trabajados (Cerrados)</strong></td>
-                <td style="padding: 10px; border-bottom: 1px solid #ccc; text-align: right; font-weight: bold;">${trabajados}</td>
-            </tr>
-            <tr>
-                <td style="padding: 10px; border-bottom: 1px solid #ccc;"><strong>Casos en Proceso (Activos)</strong></td>
-                <td style="padding: 10px; border-bottom: 1px solid #ccc; text-align: right; font-weight: bold;">${enProceso}</td>
-            </tr>
-            <tr>
-                <td style="padding: 10px; border-bottom: 1px solid #ccc; color: #dc2626;"><strong>Incidencias Rechazadas</strong></td>
-                <td style="padding: 10px; border-bottom: 1px solid #ccc; text-align: right; font-weight: bold; color: #dc2626;">${rechazadas}</td>
-            </tr>
-        </table>
         
         <h3 class="text-xl font-bold mb-4">Detalle de Casos del Período</h3>
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 2rem; font-size: 0.75rem;">
@@ -2836,6 +2802,7 @@ function renderReportPreview() {
                     <th style="padding: 8px; border: 1px solid #ccc; text-align: left;">ID / Asunto</th>
                     <th style="padding: 8px; border: 1px solid #ccc; text-align: left;">Estado</th>
                     <th style="padding: 8px; border: 1px solid #ccc; text-align: left;">Tipo</th>
+                    <th style="padding: 8px; border: 1px solid #ccc; text-align: center;">Región</th>
                 </tr>
             </thead>
             <tbody id="previewDetalleTable">
@@ -3164,14 +3131,6 @@ function initDashboard() {
     }
     const rechazadas = solicitudesFiltradas.filter(s => s.estado === 'RECHAZADO' || s.estado === 'Rechazada por Gerencia').length;
 
-    // Update UI Summary Table
-    const elTrabajados = document.getElementById('dashTrabajados');
-    if (elTrabajados) elTrabajados.innerText = trabajados;
-    const elEnProceso = document.getElementById('dashEnProceso');
-    if (elEnProceso) elEnProceso.innerText = enProceso;
-    const elRechazadas = document.getElementById('dashRechazadas');
-    if (elRechazadas) elRechazadas.innerText = rechazadas;
-
     // Populate Detailed Cases Table
     const elDetalle = document.getElementById('dashDetalleTable');
     if (elDetalle) {
@@ -3179,42 +3138,54 @@ function initDashboard() {
         const enProcesoList = filtered.filter(c => c.estado !== ESTADOS_CASO.CERRADO);
         const rechazadasList = solicitudesFiltradas.filter(s => s.estado === 'RECHAZADO' || s.estado === 'Rechazada por Gerencia');
         
+        // Helper to get Region name for a user
+        const getRegionName = (username) => {
+            const u = db.users.find(x => x.username === username);
+            return u ? u.region : 'Nacional';
+        };
+
         // 1. Trabajados (Cerrados)
         closed.forEach(c => {
+            const reg = getRegionName(c.creadorOriginal);
             rows += `<tr class="table-row">
                 <td><div class="font-bold">Caso ${c.id}</div><div class="text-xs text-muted truncate w-48">${c.asunto}</div></td>
                 <td><span class="badge ${estadoBadgeClass(c.estado)}">${c.estado}</span></td>
                 <td><span class="badge" style="background:#d1fae5;color:#065f46;border:1px solid #a7f3d0;">Trabajado</span></td>
+                <td class="text-center text-sm font-semibold">${reg}</td>
                 <td class="text-center"><button class="btn btn-secondary btn-sm" onclick="navigate('case-detail', {id:'${c.id}'})">Ver</button></td>
             </tr>`;
         });
         // 2. En Proceso
         enProcesoList.forEach(c => {
+            const reg = getRegionName(c.creadorOriginal);
             rows += `<tr class="table-row">
                 <td><div class="font-bold">Caso ${c.id}</div><div class="text-xs text-muted truncate w-48">${c.asunto}</div></td>
                 <td><span class="badge ${estadoBadgeClass(c.estado)}">${c.estado}</span></td>
                 <td><span class="badge" style="background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe;">En Proceso</span></td>
+                <td class="text-center text-sm font-semibold">${reg}</td>
                 <td class="text-center"><button class="btn btn-secondary btn-sm" onclick="navigate('case-detail', {id:'${c.id}'})">Ver</button></td>
             </tr>`;
         });
         // 3. Rechazadas
         rechazadasList.forEach(s => {
+            const reg = getRegionName(s.creadoPor);
             rows += `<tr class="table-row">
                 <td><div class="font-bold">Incidencia ${s.id}</div><div class="text-xs text-muted truncate w-48">${s.asunto}</div></td>
                 <td><span class="badge" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;">Rechazada</span></td>
                 <td><span class="badge" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;">Rechazada</span></td>
+                <td class="text-center text-sm font-semibold">${reg}</td>
                 <td class="text-center"><button class="btn btn-secondary btn-sm" onclick="navigate('solicitud-detail', {id:'${s.id}'})">Ver</button></td>
             </tr>`;
         });
         
-        if (!rows) rows = '<tr><td colspan="4" class="text-center p-4 text-muted">No hay registros en este período.</td></tr>';
+        if (!rows) rows = '<tr><td colspan="5" class="text-center p-4 text-muted">No hay registros en este período.</td></tr>';
         elDetalle.innerHTML = rows;
 
         // Guarda globalmente para uso del Preview y el PDF
         window.currentDashboardDetalle = [
-            ...closed.map(c => ({ id: c.id, asunto: c.asunto, estado: c.estado, tipo: 'Trabajado', typeLink: 'case' })),
-            ...enProcesoList.map(c => ({ id: c.id, asunto: c.asunto, estado: c.estado, tipo: 'En Proceso', typeLink: 'case' })),
-            ...rechazadasList.map(s => ({ id: s.id, asunto: s.asunto, estado: 'Rechazada', tipo: 'Rechazada', typeLink: 'solicitud' }))
+            ...closed.map(c => ({ id: c.id, asunto: c.asunto, estado: c.estado, tipo: 'Trabajado', region: getRegionName(c.creadorOriginal), typeLink: 'case' })),
+            ...enProcesoList.map(c => ({ id: c.id, asunto: c.asunto, estado: c.estado, tipo: 'En Proceso', region: getRegionName(c.creadorOriginal), typeLink: 'case' })),
+            ...rechazadasList.map(s => ({ id: s.id, asunto: s.asunto, estado: 'Rechazada', tipo: 'Rechazada', region: getRegionName(s.creadoPor), typeLink: 'solicitud' }))
         ];
     }
 

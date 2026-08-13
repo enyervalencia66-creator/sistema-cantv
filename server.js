@@ -921,17 +921,6 @@ function buildReportePdf(titulo, fechaGeneracion, subtitulo, { total, tasaCierre
 
         doc.y = row2Y + cardH + 40;
 
-        pdfSectionTitle(doc, 'Resumen de Gestión del Período');
-        doc.moveDown(0.5);
-        
-        pdfDataTable(doc, [
-            ['Casos Trabajados (Cerrados)', String(trabajados || 0)],
-            ['Casos en Proceso (Activos)', String(enProceso || 0)],
-            ['Incidencias Rechazadas', String(rechazadas || 0)]
-        ]);
-
-        doc.y += 20;
-
         // Detalle de Casos con Enlaces
         if (listaDetalle && listaDetalle.length > 0) {
             if (doc.y > doc.page.height - 150) doc.addPage();
@@ -939,15 +928,16 @@ function buildReportePdf(titulo, fechaGeneracion, subtitulo, { total, tasaCierre
             doc.moveDown(0.5);
 
             const tableTop = doc.y;
-            const w1 = 150, w2 = 180, w3 = 100, w4 = 80;
-            const x1 = PDF_MARGIN, x2 = x1 + w1, x3 = x2 + w2, x4 = x3 + w3;
+            const w1 = 120, w2 = 140, w3 = 90, w4 = 80, w5 = 80;
+            const x1 = PDF_MARGIN, x2 = x1 + w1, x3 = x2 + w2, x4 = x3 + w3, x5 = x4 + w4;
 
             // Encabezados
             doc.font('Helvetica-Bold').fontSize(9).fillColor('#64748b');
             doc.text('ID', x1, tableTop, { width: w1 });
             doc.text('Asunto', x2, tableTop, { width: w2 });
             doc.text('Estado', x3, tableTop, { width: w3 });
-            doc.text('Enlace', x4, tableTop, { width: w4, align: 'right' });
+            doc.text('Región', x4, tableTop, { width: w4 });
+            doc.text('Enlace', x5, tableTop, { width: w5, align: 'right' });
             
             doc.moveTo(PDF_MARGIN, doc.y + 5).lineTo(doc.page.width - PDF_MARGIN, doc.y + 5).strokeColor('#e2e8f0').lineWidth(1).stroke();
             doc.y += 12;
@@ -962,14 +952,15 @@ function buildReportePdf(titulo, fechaGeneracion, subtitulo, { total, tasaCierre
                 
                 doc.fillColor('#0f172a').text(item.id, x1, rowY, { width: w1 });
                 // truncate asunto
-                const shortAsunto = item.asunto.length > 30 ? item.asunto.substring(0, 30) + '...' : item.asunto;
+                const shortAsunto = item.asunto.length > 25 ? item.asunto.substring(0, 25) + '...' : item.asunto;
                 doc.fillColor('#475569').text(shortAsunto, x2, rowY, { width: w2 });
                 doc.fillColor('#475569').text(item.estado, x3, rowY, { width: w3 });
+                doc.fillColor('#475569').text(item.region || 'Nacional', x4, rowY, { width: w4 });
 
                 // Link
                 const linkView = item.typeLink === 'solicitud' ? 'solicitud-detail' : 'case-detail';
                 const linkUrl = `${appUrl || 'http://localhost'}/?view=${linkView}&id=${encodeURIComponent(item.id)}`;
-                doc.fillColor(PDF_BRAND_BLUE).text('Ver Detalle', x4, rowY, { width: w4, align: 'right', link: linkUrl, underline: true });
+                doc.fillColor(PDF_BRAND_BLUE).text('Ver Detalle', x5, rowY, { width: w5, align: 'right', link: linkUrl, underline: true });
 
                 doc.moveTo(PDF_MARGIN, doc.y + 5).lineTo(doc.page.width - PDF_MARGIN, doc.y + 5).strokeColor('#f1f5f9').stroke();
                 doc.y += 12;
