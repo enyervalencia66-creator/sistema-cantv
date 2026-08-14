@@ -1715,10 +1715,19 @@ async function notifyUser(targets, message, linkObj = null) {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: username, mensaje: message, link: linkObj, leido: false })
             });
+            if (!res.ok) {
+                const text = await res.text();
+                uiAlert(`Error enviando notificación al servidor: ${res.status} ${text}`);
+                console.error('Error notificaciones:', text);
+                continue;
+            }
             const result = await res.json();
             const row = result.data && result.data[0];
             if (row) db.notificaciones.push({ id: row.id_notificacion, userId: row.user_id, mensaje: row.mensaje, link: row.link, leido: row.leido, fecha: row.fecha });
-        } catch (e) { console.error('notifyUser error:', e); }
+        } catch (e) { 
+            console.error('notifyUser error:', e); 
+            uiAlert(`Error de red al notificar a ${username}: ${e.message}`);
+        }
     }
     renderTopbar();
     renderSidebarBadges();

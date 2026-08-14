@@ -525,16 +525,20 @@ app.post('/api/db/:table', authenticate, async (req, res) => {
         // cubre todas las acciones del flujo sin tocar cada punto donde se generan.
         if (req.params.table === 'notificaciones' && data && data[0]) {
             let appUrl = `${req.protocol}://${req.get('host')}`;
-            if (data[0].link && typeof data[0].link === 'object') {
-                const qParams = new URLSearchParams();
-                if (data[0].link.view) qParams.append('view', data[0].link.view);
-                if (data[0].link.params) {
-                    for (const [k, v] of Object.entries(data[0].link.params)) {
-                        qParams.append(k, v);
+            try {
+                if (data[0].link && typeof data[0].link === 'object') {
+                    const qParams = new URLSearchParams();
+                    if (data[0].link.view) qParams.append('view', data[0].link.view);
+                    if (data[0].link.params) {
+                        for (const [k, v] of Object.entries(data[0].link.params)) {
+                            qParams.append(k, v);
+                        }
                     }
+                    const qs = qParams.toString();
+                    if (qs) appUrl += `/?${qs}`;
                 }
-                const qs = qParams.toString();
-                if (qs) appUrl += `/?${qs}`;
+            } catch (err) {
+                console.error("Error building appUrl:", err);
             }
             notifyByEmail(data[0], appUrl, req.user && req.user.username).catch(e => console.error('notifyByEmail ERROR:', e));
         }
