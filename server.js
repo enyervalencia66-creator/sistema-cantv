@@ -716,16 +716,21 @@ app.post('/api/auth/reset/confirm', async (req, res) => {
     // Restablecer la contraseña también desbloquea la cuenta si estaba bloqueada por intentos
     // fallidos (pero no reactiva una cuenta que un administrador haya puesto en 'inactivo' aparte).
     const { data: userRows } = await supabase.from('users').select('id, username, estado').eq('email', email);
-    const targetUser = userRows && userRows[0];
-    const wasBlocked = targetUser && targetUser.estado && targetUser.estado.toLowerCase() === 'bloqueado';
-
+    
     const hashedNewPassword = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
-    const { error: updateErr } = await supabase.from('users')
-        .update({ password: hashedNewPassword, ...(wasBlocked ? { estado: 'activo' } : {}) })
-        .eq('email', email);
-    if (updateErr) return res.status(500).json({ error: 'Error updating password' });
-
-    if (targetUser) failedLoginAttempts.delete(targetUser.username);
+    
+    if (userRows) {
+        for (const targetUser of userRows) {
+            const wasBlocked = targetUser.estado && targetUser.estado.toLowerCase() === 'bloqueado';
+            failedLoginAttempts.delete(targetUser.username);
+            
+            const updatePayload = { password: hashedNewPassword };
+            if (wasBlocked) updatePayload.estado = 'activo';
+            
+            const { error: updateErr } = await supabase.from('users').update(updatePayload).eq('id', targetUser.id);
+            if (updateErr) return res.status(500).json({ error: 'Error updating password' });
+        }
+    }
 
     await supabase.from('password_reset_tokens').delete().eq('email', email);
     await prefetchData();
