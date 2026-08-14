@@ -3805,7 +3805,16 @@ function renderSolicitudDetail(id) {
             actions = `<p class="text-muted text-sm">Esta incidencia está pendiente de revisión por el Gerente.</p>`;
         }
     } else if ((s.estado === 'CASO_ABIERTO' || s.estado === 'APROBADO') && s.casoGenerado) {
-        if (hasPermission('sustanciar_caso')) {
+        let casoRelacionado = db.investigaciones.find(inv => inv.id_investigacion == s.casoGenerado);
+        let especialistaPuedeSustanciar = false;
+        
+        if (casoRelacionado && hasPermission('sustanciar_caso')) {
+            if ([ESTADOS_CASO.PENDIENTE, ESTADOS_CASO.SUSTANCIACION].includes(casoRelacionado.estatus) && casoRelacionado.especialista_asignado === currentUser.username) {
+                especialistaPuedeSustanciar = true;
+            }
+        }
+
+        if (especialistaPuedeSustanciar) {
             actions = `<div class="p-4 rounded-lg" style="background: #ecfdf5; border: 1px solid #a7f3d0;">
                 <p class="mb-3 font-medium" style="color: #047857;">Esta incidencia fue aprobada. Puedes sustanciarla o verla en el Caso #${s.casoGenerado}.</p>
                 <button class="btn btn-primary" onclick="navigate('case-detail', { id: ${s.casoGenerado} })">Sustanciar / Ver Caso</button>
