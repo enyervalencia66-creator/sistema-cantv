@@ -178,7 +178,11 @@ function buildNotificationEmailHtml(message, appUrl, senderName) {
 // (fire-and-forget): si Gmail falla, la notificación interna ya quedó guardada y no debe verse
 // afectada por un problema de correo.
 async function notifyByEmail(notifRow, appUrl, senderUsername) {
-    if (!notifRow || !notifRow.user_id || !notifRow.mensaje) return;
+    console.log(`[notifyByEmail] Iniciando envío para notif ID: ${notifRow.id_notificacion}, User: ${notifRow.user_id}`);
+    if (!notifRow || !notifRow.user_id || !notifRow.mensaje) {
+        console.log(`[notifyByEmail] Abortado: falta información en notifRow`, notifRow);
+        return;
+    }
     const [{ data: recipients }, { data: senders }] = await Promise.all([
         supabase.from('users').select('email').eq('username', notifRow.user_id).limit(1),
         senderUsername
@@ -186,10 +190,18 @@ async function notifyByEmail(notifRow, appUrl, senderUsername) {
             : Promise.resolve({ data: null })
     ]);
     const email = recipients && recipients[0] && recipients[0].email;
+    console.log(`[notifyByEmail] Destinatario encontrado: ${notifRow.user_id} -> Email: ${email}`);
     if (!email) return;
     const senderName = (senders && senders[0] && senders[0].nombre) || senderUsername || 'Sistema';
-    await sendEmail(email, 'Nueva notificación - Sistema CANTV', buildNotificationEmailHtml(notifRow.mensaje, appUrl, senderName));
+    
+    try {
+        await sendEmail(email, 'Nueva notificación - Sistema CANTV', buildNotificationEmailHtml(notifRow.mensaje, appUrl, senderName));
+        console.log(`[notifyByEmail] ÉXITO: Correo enviado a ${email}`);
+    } catch (err) {
+        console.error(`[notifyByEmail] ERROR AL ENVIAR CORREO a ${email}:`, err);
+    }
 }
+
 
 // JWT Middleware (Optional for basic thesis demo, but added for structure)
 const authenticate = (req, res, next) => {
