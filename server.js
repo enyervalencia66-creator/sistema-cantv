@@ -162,7 +162,7 @@ function buildNotificationEmailHtml(message, appUrl, senderName) {
       <p style="margin:0 0 16px;font-size:12px;color:#94a3b8;">De parte de: <strong style="color:#475569;">${senderName}</strong></p>
       <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.5;">${message}</p>
       <div style="text-align:center;margin-top:24px;">
-        <a href="${appUrl}" style="background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;display:inline-block;">Ir al sistema</a>
+        <a href="${appUrl}" style="background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;display:inline-block;">Ver detalles en el sistema</a>
       </div>
       <p style="margin:16px 0 0;font-size:11px;color:#94a3b8;line-height:1.5;text-align:center;">Debes iniciar sesión con tu usuario para ver el detalle.</p>
     </div>
@@ -512,7 +512,18 @@ app.post('/api/db/:table', authenticate, async (req, res) => {
         // pasa por esta tabla vía notifyUser() en el frontend, así que enganchar el correo aquí
         // cubre todas las acciones del flujo sin tocar cada punto donde se generan.
         if (req.params.table === 'notificaciones' && data && data[0]) {
-            const appUrl = `${req.protocol}://${req.get('host')}`;
+            let appUrl = `${req.protocol}://${req.get('host')}`;
+            if (data[0].link && typeof data[0].link === 'object') {
+                const qParams = new URLSearchParams();
+                if (data[0].link.view) qParams.append('view', data[0].link.view);
+                if (data[0].link.params) {
+                    for (const [k, v] of Object.entries(data[0].link.params)) {
+                        qParams.append(k, v);
+                    }
+                }
+                const qs = qParams.toString();
+                if (qs) appUrl += `/?${qs}`;
+            }
             notifyByEmail(data[0], appUrl, req.user && req.user.username).catch(e => console.error('notifyByEmail ERROR:', e));
         }
 
