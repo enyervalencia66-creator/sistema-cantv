@@ -2760,6 +2760,8 @@ function renderReportPreview() {
     const enProceso = document.getElementById('dashEnProceso') ? document.getElementById('dashEnProceso').innerText : '0';
     const rechazadas = document.getElementById('dashRechazadas') ? document.getElementById('dashRechazadas').innerText : '0';
     
+    window.currentDashboardData = { total, comp, rate, avg, trabajados, enProceso, rechazadas };
+    
     let rowsHTML = '<tr><td colspan="4" style="padding: 12px; text-align: center; border: 1px solid #ccc;">No hay registros en este período.</td></tr>';
     if (window.currentDashboardDetalle && window.currentDashboardDetalle.length > 0) {
         rowsHTML = window.currentDashboardDetalle.map(item => `
@@ -2835,14 +2837,15 @@ async function descargarReportePdf(e) {
     const btn = e && e.currentTarget ? e.currentTarget : null;
     if (!lockAction(btn, 'Generando PDF...')) return;
 
-    const total = document.getElementById('kpiTotal') ? document.getElementById('kpiTotal').innerText : '0';
-    const rate = document.getElementById('kpiRate') ? document.getElementById('kpiRate').innerText.replace('%', '') : '0';
-    const avg = document.getElementById('kpiAvgTime') ? document.getElementById('kpiAvgTime').innerText.replace(' d', '') : '0';
-    const comp = document.getElementById('kpiCompliance') ? document.getElementById('kpiCompliance').innerText.replace('%', '') : '0';
+    const data = window.currentDashboardData || {};
+    const total = data.total || '0';
+    const rate = (data.rate || '0%').replace('%', '');
+    const avg = (data.avg || '0 d').replace(' d', '');
+    const comp = (data.comp || '0%').replace('%', '');
     
-    const trabajados = document.getElementById('dashTrabajados') ? document.getElementById('dashTrabajados').innerText : '0';
-    const enProceso = document.getElementById('dashEnProceso') ? document.getElementById('dashEnProceso').innerText : '0';
-    const rechazadasCount = document.getElementById('dashRechazadas') ? document.getElementById('dashRechazadas').innerText : '0';
+    const trabajados = data.trabajados || '0';
+    const enProceso = data.enProceso || '0';
+    const rechazadasCount = data.rechazadas || '0';
 
     try {
         const res = await fetch('/api/reports/pdf', {
@@ -3419,7 +3422,7 @@ function renderSolicitudes() {
             <td>${formatAsunto(s.asunto)}</td>
             <td><span class="badge" style="${estadoColor}">${estadoLabel}</span></td>
             <td><span style="font-size:0.8rem">${(() => { const u = db.users.find(x => x.username === s.creadoPor); return u ? `${u.name} <span class="badge badge-low" style="font-size:0.7rem;padding:0.1rem 0.4rem;">${u.role}</span>` : s.creadoPor; })()}</span></td>
-            <td><button class="btn btn-secondary btn-sm" onclick="navigate('solicitud-detail', {id:'${s.id}'})">Ver</button></td>
+            <td><button class="btn btn-secondary btn-sm" onclick="navigate('${s.casoGenerado ? 'case-detail' : 'solicitud-detail'}', {id:'${s.casoGenerado ? s.casoGenerado : s.id}'})">Ver</button></td>
         </tr>`;
     });
     setTimeout(() => { const input = document.getElementById('searchSol'); if(input && document.activeElement !== input && term) input.focus(); }, 0);
