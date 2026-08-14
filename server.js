@@ -376,7 +376,7 @@ function filterCacheForUser(cache, userReq) {
         filtered.notificaciones = (cache.notificaciones || []).filter(n => n.user_id === userReq.username);
     }
     
-    const validInvIds = new Set((filtered.investigaciones || []).map(i => i.id));
+    const validInvIds = new Set((filtered.investigaciones || []).map(i => i.id_investigacion));
     filtered.estadoHistorial = (cache.estadoHistorial || []).filter(h => validInvIds.has(h.investigacion_id));
     filtered.comentarios = (cache.comentarios || []).filter(c => validInvIds.has(c.investigacion_id));
     filtered.invPersona = (cache.invPersona || []).filter(ip => validInvIds.has(ip.investigacion_id));
