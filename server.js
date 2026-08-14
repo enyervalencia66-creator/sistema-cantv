@@ -721,11 +721,15 @@ app.post('/api/auth/reset/confirm', async (req, res) => {
     
     if (userRows) {
         for (const targetUser of userRows) {
-            const wasBlocked = targetUser.estado && targetUser.estado.toLowerCase() === 'bloqueado';
+            // Elimina los intentos fallidos, pero asegúrate de buscar en minúscula si es necesario
             failedLoginAttempts.delete(targetUser.username);
+            failedLoginAttempts.delete(targetUser.username.toLowerCase());
             
             const updatePayload = { password: hashedNewPassword };
-            if (wasBlocked) updatePayload.estado = 'activo';
+            // Siempre activamos la cuenta a menos que el admin la haya puesto en inactivo
+            if (targetUser.estado && targetUser.estado.toLowerCase() !== 'inactivo') {
+                updatePayload.estado = 'activo';
+            }
             
             const { error: updateErr } = await supabase.from('users').update(updatePayload).eq('id', targetUser.id);
             if (updateErr) return res.status(500).json({ error: 'Error updating password' });
@@ -1390,12 +1394,27 @@ app.post('/api/reports/pdf', authenticate, async (req, res) => {
     }
 });
 
+const sanitizeForPDF = (obj) => {
+    if (typeof obj === 'string') {
+        return obj.replace(/[^\x00-\xFF\u0152\u0153\u0178\u0192\u2013\u2014\u2018\u2019\u201A\u201C\u201D\u201E\u2020\u2021\u2022\u2026\u2030\u20AC\u2122]/g, '');
+    }
+    if (Array.isArray(obj)) return obj.map(sanitizeForPDF);
+    if (obj !== null && typeof obj === 'object') {
+        const newObj = {};
+        for (const key in obj) {
+            newObj[key] = sanitizeForPDF(obj[key]);
+        }
+        return newObj;
+    }
+    return obj;
+};
+
 // 8. Exportar un Caso a PDF. El cliente ya tiene el caso completamente ensamblado (con nombres
 // de personas y responsables resueltos), así que se lo envía en el body en vez de re-consultarlo.
 app.post('/api/casos/pdf', authenticate, async (req, res) => {
     try {
         const appUrl = `${req.protocol}://${req.get('host')}`;
-        const pdfBuffer = await buildCasoPdf(req.body || {}, appUrl);
+        const pdfBuffer = await buildCasoPdf(sanitizeForPDF(req.body || {}), appUrl);
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="Caso_${req.body?.id ?? Date.now()}.pdf"`);
         res.send(pdfBuffer);
@@ -1409,7 +1428,7 @@ app.post('/api/casos/pdf', authenticate, async (req, res) => {
 app.post('/api/solicitudes/pdf', authenticate, async (req, res) => {
     try {
         const appUrl = `${req.protocol}://${req.get('host')}`;
-        const pdfBuffer = await buildIncidenciaPdf(req.body || {}, appUrl);
+        const pdfBuffer = await buildIncidenciaPdf(sanitizeForPDF(req.body || {}), appUrl);
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="Incidencia_${req.body?.id ?? Date.now()}.pdf"`);
         res.send(pdfBuffer);
