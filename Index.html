@@ -4696,7 +4696,7 @@ function renderCaseDetail(id) {
                 </div>
                 <div class="case-block-body" style="flex: 1;">
                     ${involucradosHtml}
-                    ${c.estado === ESTADOS_CASO.SUSTANCIACION ? `
+                    ${c.estado === ESTADOS_CASO.SUSTANCIACION && currentUser.username === c.asignadoA ? `
                     <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px dashed var(--glass-border)">
                         <p class="form-label mb-2">Vincular persona por Cédula:</p>
                         <div class="flex flex-col gap-3">

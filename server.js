@@ -339,14 +339,35 @@ function filterCacheForUser(cache, userReq) {
     
     let filtered = { ...cache };
     if (isCoordOrSuper) {
-        filtered.users = (cache.users || []).filter(u => String(u.regions) === String(userReq.regions) || String(u.id) === String(userReq.id));
-        filtered.investigaciones = (cache.investigaciones || []).filter(c => String(c.region) === String(userReq.regions));
-        filtered.solicitudes = (cache.solicitudes || []).filter(s => String(s.region) === String(userReq.regions));
+        const regionStr = String(userReq.regions);
+        filtered.users = (cache.users || []).filter(u => String(u.regions) === regionStr || String(u.id) === String(userReq.id));
+        
+        const regionUserIds = new Set(filtered.users.map(u => String(u.id)));
+
+        filtered.investigaciones = (cache.investigaciones || []).filter(c => 
+            regionUserIds.has(String(c.denunciante_id)) || 
+            String(c.coordinador_asignado) === String(userReq.id) || 
+            String(c.supervisor_asignado) === String(userReq.id)
+        );
+
+        filtered.solicitudes = (cache.solicitudes || []).filter(s => 
+            regionUserIds.has(String(s.solicitante_id)) || 
+            String(s.solicitante_id) === String(userReq.id)
+        );
+
         filtered.notificaciones = (cache.notificaciones || []).filter(n => n.user_id === userReq.username);
     } else if (isEspecialista) {
         filtered.users = (cache.users || []).filter(u => String(u.id) === String(userReq.id));
-        filtered.investigaciones = (cache.investigaciones || []).filter(c => c.asignado_a === userReq.username);
-        filtered.solicitudes = (cache.solicitudes || []).filter(s => s.usuario_solicitante === userReq.username || s.asignado_a === userReq.username);
+        
+        filtered.investigaciones = (cache.investigaciones || []).filter(c => 
+            String(c.especialista_asignado) === String(userReq.id) || 
+            String(c.denunciante_id) === String(userReq.id)
+        );
+
+        filtered.solicitudes = (cache.solicitudes || []).filter(s => 
+            String(s.solicitante_id) === String(userReq.id)
+        );
+        
         filtered.notificaciones = (cache.notificaciones || []).filter(n => n.user_id === userReq.username);
     } else {
         filtered.users = (cache.users || []).filter(u => String(u.id) === String(userReq.id));
