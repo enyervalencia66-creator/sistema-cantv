@@ -1691,19 +1691,29 @@ function estadoBadgeClass(estado) {
     return 'badge-neutral';
 }
 
-async function notifyUser(target, message, linkObj = null) {
-    if (target === 'admin') target = ROLES.SUPER;
-    if (target === 'coord') target = ROLES.COORD;
-    if (target === 'gerente') target = ROLES.GERENTE;
+async function notifyUser(targets, message, linkObj = null) {
+    if (!Array.isArray(targets)) targets = [targets];
 
-    const isRole = Object.values(ROLES).includes(target);
-    const usersToNotify = isRole ? db.users.filter(u => u.role === target) : db.users.filter(u => u.username === target);
+    const usersToNotify = new Set();
 
-    for (const u of usersToNotify) {
+    for (let target of targets) {
+        if (target === 'admin') target = ROLES.SUPER;
+        if (target === 'coord') target = ROLES.COORD;
+        if (target === 'gerente') target = ROLES.GERENTE;
+
+        const isRole = Object.values(ROLES).includes(target);
+        if (isRole) {
+            db.users.filter(u => u.role === target).forEach(u => usersToNotify.add(u.username));
+        } else {
+            db.users.filter(u => u.username === target).forEach(u => usersToNotify.add(u.username));
+        }
+    }
+
+    for (const username of usersToNotify) {
         try {
             const res = await fetch('/api/db/notificaciones', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: u.username, mensaje: message, link: linkObj, leido: false })
+                body: JSON.stringify({ user_id: username, mensaje: message, link: linkObj, leido: false })
             });
             const result = await res.json();
             const row = result.data && result.data[0];
@@ -5188,7 +5198,7 @@ async function cerrarCasoGerencia(e, id) {
         c.conclusion = payload.conclusion;
         pushEstadoLocal(c, ESTADOS_CASO.CERRADO);
         pushComentarioLocal(c, 'Caso cerrado por Gerencia. Memorándum emitido.');
-        chain.forEach(u => notifyUser(u, `Gerencia ha CERRADO el Caso ${id}. Memo adjunto.`, { view: 'case-detail', params: { id } }));
+        notifyUser(Array.from(chain), `Gerencia ha CERRADO el Caso ${id}. Memo adjunto.`, { view: 'case-detail', params: { id } });
         showToast(`Caso ${id} cerrado exitosamente.`, 'success');
         navigate('casos');
         refreshInBackground();
