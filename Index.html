@@ -3516,11 +3516,9 @@ function abrirImagenInterna(url, nombre) {
 function openStoredFileUrl(url, isOwner = false) {
     if (!url) return showToast('Archivo no disponible.', 'error');
     if (/\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/i.test(url)) {
-        if (isOwner) window.open(url, '_blank');
-        else abrirImagenInterna(url, 'Documento');
+        abrirImagenInterna(url, 'Documento');
     } else if (/\.pdf(\?.*)?$/i.test(url)) {
-        if (isOwner) window.open(url, '_blank');
-        else abrirPdfInterno(url, 'Documento');
+        abrirPdfInterno(url, 'Documento');
     } else if (/\.(docx?|xlsx?|pptx?)(\?.*)?$/i.test(url)) {
         window.open('https://view.officeapps.live.com/op/view.aspx?src=' + encodeURIComponent(url), '_blank');
     } else {
@@ -3613,17 +3611,9 @@ async function abrirPdfInterno(url, nombre) {
 function abrirDocumentoCaso(url, nombre, isOwner = false) {
     if (!url) return showToast('Archivo no disponible.', 'error');
     if (/\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/i.test(url)) {
-        if (isOwner) {
-            window.open(url, '_blank');
-        } else {
-            abrirImagenInterna(url, nombre);
-        }
+        abrirImagenInterna(url, nombre);
     } else if (/\.pdf(\?.*)?$/i.test(url)) {
-        if (isOwner) {
-            window.open(url, '_blank');
-        } else {
-            abrirPdfInterno(url, nombre);
-        }
+        abrirPdfInterno(url, nombre);
     } else if (/\.(docx?|xlsx?|pptx?)(\?.*)?$/i.test(url)) {
         window.open('https://view.officeapps.live.com/op/view.aspx?src=' + encodeURIComponent(url), '_blank');
     } else {
