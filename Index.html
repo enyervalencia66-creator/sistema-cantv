@@ -1692,7 +1692,6 @@ function estadoBadgeClass(estado) {
 }
 
 async function notifyUser(targets, message, linkObj = null) {
-    uiAlert(`[DEBUG] notifyUser invocado. Targets: ${JSON.stringify(targets)}`);
     if (!Array.isArray(targets)) targets = [targets];
 
     const usersToNotify = new Set();
@@ -1710,12 +1709,7 @@ async function notifyUser(targets, message, linkObj = null) {
         }
     }
 
-    uiAlert(`[DEBUG] Usuarios a notificar: ${Array.from(usersToNotify).join(', ')}`);
-
-    if (usersToNotify.size === 0) {
-        uiAlert(`[DEBUG] Error crítico: No se encontró a nadie para notificar.`);
-        return; 
-    }
+    if (usersToNotify.size === 0) return; // Si no hay destinatarios válidos
 
     for (const username of usersToNotify) {
         try {
