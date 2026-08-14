@@ -1692,6 +1692,7 @@ function estadoBadgeClass(estado) {
 }
 
 async function notifyUser(targets, message, linkObj = null) {
+    uiAlert(`[DEBUG] notifyUser invocado. Targets: ${JSON.stringify(targets)}`);
     if (!Array.isArray(targets)) targets = [targets];
 
     const usersToNotify = new Set();
@@ -1707,6 +1708,13 @@ async function notifyUser(targets, message, linkObj = null) {
         } else {
             db.users.filter(u => u.username === target).forEach(u => usersToNotify.add(u.username));
         }
+    }
+
+    uiAlert(`[DEBUG] Usuarios a notificar: ${Array.from(usersToNotify).join(', ')}`);
+
+    if (usersToNotify.size === 0) {
+        uiAlert(`[DEBUG] Error crítico: No se encontró a nadie para notificar.`);
+        return; 
     }
 
     for (const username of usersToNotify) {
