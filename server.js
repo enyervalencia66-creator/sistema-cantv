@@ -352,11 +352,14 @@ function filterCacheForUser(cache, userReq) {
     if (isAdmin) return cache;
     
     let filtered = { ...cache };
+    
+    // IMPORTANTE: No se filtra cache.users porque el frontend (Index.html) necesita la lista completa 
+    // de usuarios para poder traducir roles (ej. 'Gerente Nacional') a nombres de usuario en notifyUser().
+    // Como las contraseñas ya vienen filtradas, no hay riesgo de seguridad.
+    
     if (isCoordOrSuper) {
         const regionStr = String(userReq.regions);
-        filtered.users = (cache.users || []).filter(u => String(u.regions) === regionStr || String(u.id) === String(userReq.id));
-        
-        const regionUserIds = new Set(filtered.users.map(u => String(u.id)));
+        const regionUserIds = new Set((cache.users || []).filter(u => String(u.regions) === regionStr || String(u.id) === String(userReq.id)).map(u => String(u.id)));
 
         filtered.investigaciones = (cache.investigaciones || []).filter(c => 
             regionUserIds.has(String(c.denunciante_id)) || 
@@ -371,8 +374,6 @@ function filterCacheForUser(cache, userReq) {
 
         filtered.notificaciones = (cache.notificaciones || []).filter(n => n.user_id === userReq.username);
     } else if (isEspecialista) {
-        filtered.users = (cache.users || []).filter(u => String(u.id) === String(userReq.id));
-        
         filtered.investigaciones = (cache.investigaciones || []).filter(c => 
             String(c.especialista_asignado) === String(userReq.id) || 
             String(c.denunciante_id) === String(userReq.id)
@@ -384,7 +385,6 @@ function filterCacheForUser(cache, userReq) {
         
         filtered.notificaciones = (cache.notificaciones || []).filter(n => n.user_id === userReq.username);
     } else {
-        filtered.users = (cache.users || []).filter(u => String(u.id) === String(userReq.id));
         filtered.investigaciones = [];
         filtered.solicitudes = [];
         filtered.notificaciones = (cache.notificaciones || []).filter(n => n.user_id === userReq.username);
