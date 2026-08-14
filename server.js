@@ -195,7 +195,9 @@ async function notifyByEmail(notifRow, appUrl, senderUsername) {
     const senderName = (senders && senders[0] && senders[0].nombre) || senderUsername || 'Sistema';
     
     try {
-        await sendEmail(email, 'Nueva notificación - Sistema CANTV', buildNotificationEmailHtml(notifRow.mensaje, appUrl, senderName));
+        const shortMsg = notifRow.mensaje.length > 40 ? notifRow.mensaje.substring(0, 40) + '...' : notifRow.mensaje;
+        const subject = `Notificación CANTV: ${shortMsg}`;
+        await sendEmail(email, subject, buildNotificationEmailHtml(notifRow.mensaje, appUrl, senderName));
         console.log(`[notifyByEmail] ÉXITO: Correo enviado a ${email}`);
     } catch (err) {
         console.error(`[notifyByEmail] ERROR AL ENVIAR CORREO a ${email}:`, err);
