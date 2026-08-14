@@ -3483,7 +3483,7 @@ async function uploadFileDirect(file) {
     return data.publicUrl;
 }
 
-function abrirImagenInterna(url, nombre) {
+function abrirImagenInterna(url, nombre, isOwner = false) {
     const overlay = document.createElement('div');
     overlay.id = 'imgViewerOverlay';
     overlay.style.cssText = 'position:fixed;inset:0;background:#0f172a;z-index:9998;display:flex;flex-direction:column;';
@@ -3492,6 +3492,7 @@ function abrirImagenInterna(url, nombre) {
         <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:0.75rem 1.25rem;background:#111827;color:#fff;flex-shrink:0;">
             <span style="font-weight:600;font-size:0.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nombre || 'Imagen Adjunta'}</span>
             <div style="display:flex;align-items:center;gap:0.6rem;flex-shrink:0;">
+                ${isOwner ? `<button id="imgDownloadBtn" class="btn btn-secondary btn-sm"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline mb-0.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Descargar</button>` : ''}
                 <button id="imgCloseBtn" class="btn btn-secondary btn-sm">✕ Cerrar</button>
             </div>
         </div>
@@ -3504,6 +3505,9 @@ function abrirImagenInterna(url, nombre) {
     const cerrarVisor = () => { overlay.remove(); document.removeEventListener('keydown', onEsc); };
     const onEsc = (e) => { if (e.key === 'Escape') cerrarVisor(); };
     overlay.querySelector('#imgCloseBtn').onclick = cerrarVisor;
+    if (isOwner) {
+        overlay.querySelector('#imgDownloadBtn').onclick = () => window.open(url, '_blank');
+    }
     document.addEventListener('keydown', onEsc);
 }
 
@@ -3516,9 +3520,9 @@ function abrirImagenInterna(url, nombre) {
 function openStoredFileUrl(url, isOwner = false) {
     if (!url) return showToast('Archivo no disponible.', 'error');
     if (/\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/i.test(url)) {
-        abrirImagenInterna(url, 'Documento');
+        abrirImagenInterna(url, 'Documento', isOwner);
     } else if (/\.pdf(\?.*)?$/i.test(url)) {
-        abrirPdfInterno(url, 'Documento');
+        abrirPdfInterno(url, 'Documento', isOwner);
     } else if (/\.(docx?|xlsx?|pptx?)(\?.*)?$/i.test(url)) {
         window.open('https://view.officeapps.live.com/op/view.aspx?src=' + encodeURIComponent(url), '_blank');
     } else {
@@ -3545,7 +3549,7 @@ function cargarPdfjs() {
 // para no facilitar copiar/extraer el contenido. Como el <canvas> se pinta con fetch() hecho por
 // nuestra propia página (no una navegación directa a la URL del archivo), no hay "Guardar como"
 // nativo del navegador apuntando al PDF.
-async function abrirPdfInterno(url, nombre) {
+async function abrirPdfInterno(url, nombre, isOwner = false) {
     const overlay = document.createElement('div');
     overlay.id = 'pdfViewerOverlay';
     overlay.style.cssText = 'position:fixed;inset:0;background:#0f172a;z-index:9998;display:flex;flex-direction:column;';
@@ -3554,6 +3558,7 @@ async function abrirPdfInterno(url, nombre) {
         <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:0.75rem 1.25rem;background:#111827;color:#fff;flex-shrink:0;">
             <span style="font-weight:600;font-size:0.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${nombre || 'Documento'}</span>
             <div style="display:flex;align-items:center;gap:0.6rem;flex-shrink:0;">
+                ${isOwner ? `<button id="pdfDownloadBtn" class="btn btn-secondary btn-sm"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="inline mb-0.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Descargar</button>` : ''}
                 <button id="pdfPrevBtn" class="btn btn-secondary btn-sm">‹ Anterior</button>
                 <span id="pdfPageInfo" style="font-size:0.8rem;color:#cbd5e1;white-space:nowrap;">Cargando…</span>
                 <button id="pdfNextBtn" class="btn btn-secondary btn-sm">Siguiente ›</button>
@@ -3568,6 +3573,9 @@ async function abrirPdfInterno(url, nombre) {
     const cerrarVisor = () => { overlay.remove(); document.removeEventListener('keydown', onEsc); };
     const onEsc = (e) => { if (e.key === 'Escape') cerrarVisor(); };
     overlay.querySelector('#pdfCloseBtn').onclick = cerrarVisor;
+    if (isOwner) {
+        overlay.querySelector('#pdfDownloadBtn').onclick = () => window.open(url, '_blank');
+    }
     document.addEventListener('keydown', onEsc);
 
     try {
@@ -3611,9 +3619,9 @@ async function abrirPdfInterno(url, nombre) {
 function abrirDocumentoCaso(url, nombre, isOwner = false) {
     if (!url) return showToast('Archivo no disponible.', 'error');
     if (/\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/i.test(url)) {
-        abrirImagenInterna(url, nombre);
+        abrirImagenInterna(url, nombre, isOwner);
     } else if (/\.pdf(\?.*)?$/i.test(url)) {
-        abrirPdfInterno(url, nombre);
+        abrirPdfInterno(url, nombre, isOwner);
     } else if (/\.(docx?|xlsx?|pptx?)(\?.*)?$/i.test(url)) {
         window.open('https://view.officeapps.live.com/op/view.aspx?src=' + encodeURIComponent(url), '_blank');
     } else {
