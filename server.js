@@ -1136,7 +1136,8 @@ function buildCasoPdf(c, baseUrl) {
 
         const fmtFecha = (v) => v ? new Date(v).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
-        pdfHeader(doc, 'Expediente de Caso', `Caso ${c.id ?? ''}`, 'Detalle completo de la investigación y su trazabilidad');
+        const titleText = c.asunto ? `Caso ${c.id ?? ''} - ${c.asunto}` : `Caso ${c.id ?? ''}`;
+        pdfHeader(doc, 'Expediente de Caso', titleText, 'Detalle completo de la investigación y su trazabilidad');
 
         pdfSectionTitle(doc, 'Información General');
         pdfDataTable(doc, [
