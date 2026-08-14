@@ -670,7 +670,7 @@ app.post('/api/auth/login', async (req, res) => {
     failedLoginAttempts.delete(username);
 
     // Generate JWT
-    const token = jwt.sign({ id: user.id, username: user.username, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '8h' });
+    const token = jwt.sign({ id: user.id, username: user.username, email: user.email, role: user.role, regions: user.regions }, process.env.JWT_SECRET, { expiresIn: '8h' });
     res.json({ token, user: stripPassword(user) });
 });
 
