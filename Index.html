@@ -3200,7 +3200,9 @@ function initDashboard() {
     // Chart 1: Specialists
     const espData = {};
     closed.forEach(c => {
-        espData[c.creadorOriginal] = (espData[c.creadorOriginal] || 0) + 1;
+        if (c.especialistaAsignado) {
+            espData[c.especialistaAsignado] = (espData[c.especialistaAsignado] || 0) + 1;
+        }
     });
 
     if (chartEspInstance) chartEspInstance.destroy();
